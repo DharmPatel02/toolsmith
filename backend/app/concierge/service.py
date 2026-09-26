@@ -1,9 +1,12 @@
-"""Concierge (P2.3.6, P1 priority): POST /chat -> lean tool-calling loop with recall_episodes,
-search_tools and run_tool (dry run only). Conversations persist in `conversations`.
+"""Concierge (P4.2.3; built by P2, owned by P3): POST /chat -> lean tool-calling loop with
+recall_episodes, search_tools, run_tool (dry run only), analyze_idea, submit_feedback and
+approve_change. Conversations persist in `conversations`.
 
 ChatReply = {conversation_id, reply, tool_calls, cards}; cards are what the UI can render next to
-the answer: {"type": "episodes"|"tools"|"run", "items"|...}.
+the answer: {"type": "episodes"|"tools"|"run", "items"|...}
+or {"kind": "idea"|"feedback"|"policy", ...}.
 """
+
 from __future__ import annotations
 
 import json
@@ -21,10 +24,20 @@ HISTORY = 20
 
 async def chat(user_id: str, conversation_id: str | None, message: str) -> dict:
     db = deps.get_db()
-    conv = await db.conversations.find_one({"_id": conversation_id, "user_id": user_id}) if conversation_id else None
+    conv = (
+        await db.conversations.find_one({"_id": conversation_id, "user_id": user_id})
+        if conversation_id
+        else None
+    )
     conversation_id = (conv or {}).get("_id") or "conv_" + secrets.token_hex(4)
-    history = [{"role": m["role"], "content": m["content"]} for m in (conv or {}).get("messages", [])][-HISTORY:]
-    messages = [{"role": "system", "content": CONCIERGE_PROMPT}, *history, {"role": "user", "content": message}]
+    history = [
+        {"role": m["role"], "content": m["content"]} for m in (conv or {}).get("messages", [])
+    ][-HISTORY:]
+    messages = [
+        {"role": "system", "content": CONCIERGE_PROMPT},
+        *history,
+        {"role": "user", "content": message},
+    ]
 
     calls, cards = [], []
     reply = ""
@@ -36,28 +49,54 @@ async def chat(user_id: str, conversation_id: str | None, message: str) -> dict:
         if not res.tool_calls:
             reply = res.text.strip()
             break
-        messages.append({"role": "assistant", "content": res.text or None, "tool_calls": [
-            {"id": tc["id"], "type": "function", "function": {"name": tc["name"],
-                                                              "arguments": json.dumps(tc["arguments"])}}
-            for tc in res.tool_calls]})
+        messages.append(
+            {
+                "role": "assistant",
+                "content": res.text or None,
+                "tool_calls": [
+                    {
+                        "id": tc["id"],
+                        "type": "function",
+                        "function": {"name": tc["name"], "arguments": json.dumps(tc["arguments"])},
+                    }
+                    for tc in res.tool_calls
+                ],
+            }
+        )
         for tc in res.tool_calls:
             args = tc["arguments"] if isinstance(tc["arguments"], dict) else {}
             result, card = await _call(user_id, tc["name"], args)
             calls.append({"name": tc["name"], "arguments": args})
             if card:
                 cards.append(card)
-            messages.append({"role": "tool", "tool_call_id": tc["id"], "content": json.dumps(result, default=str)[:4000]})
+            messages.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": tc["id"],
+                    "content": json.dumps(result, default=str)[:4000],
+                }
+            )
     else:
         reply = reply or "I couldn't finish that in a few steps. Try asking more narrowly."
 
     now = datetime.now(UTC)
     await db.conversations.update_one(
         {"_id": conversation_id},
-        {"$setOnInsert": {"user_id": user_id, "created_at": now},
-         "$push": {"messages": {"$each": [{"role": "user", "content": message, "ts": now},
-                                          {"role": "assistant", "content": reply, "ts": now, "tool_calls": calls}]}},
-         "$set": {"updated_at": now}, "$inc": {"tokens": usage["tokens"]}},
-        upsert=True)
+        {
+            "$setOnInsert": {"user_id": user_id, "created_at": now},
+            "$push": {
+                "messages": {
+                    "$each": [
+                        {"role": "user", "content": message, "ts": now},
+                        {"role": "assistant", "content": reply, "ts": now, "tool_calls": calls},
+                    ]
+                }
+            },
+            "$set": {"updated_at": now},
+            "$inc": {"tokens": usage["tokens"]},
+        },
+        upsert=True,
+    )
     return {"conversation_id": conversation_id, "reply": reply, "tool_calls": calls, "cards": cards}
 
 
@@ -77,6 +116,32 @@ async def _call(user_id: str, name: str, args: dict) -> tuple[Any, dict | None]:
         except Exception as e:  # noqa: BLE001 - tell the model, don't crash the chat
             return {"error": str(e)[:300]}, None
         return res, {"type": "run", "tool_id": tool_id, "result": res}
+    if name == "analyze_idea":
+        from app.concierge.ideas import analyze_idea
+
+        idea = await analyze_idea(user_id, args.get("text", ""), confirm=bool(args.get("confirm")))
+        return idea, {"kind": "idea", "idea": idea}
+    if name == "submit_feedback":
+        from app.concierge.actions import submit_feedback
+
+        res = await submit_feedback(
+            user_id,
+            tool_id=args.get("tool_id"),
+            pattern_id=args.get("pattern_id"),
+            decision=args.get("decision", "edit"),
+            reason=args.get("reason", ""),
+            diff=args.get("diff", ""),
+        )
+        return res, ({"kind": "feedback", "feedback": {**args, **res}} if res.get("ok") else None)
+    if name == "approve_change":
+        from app.concierge.actions import approve_change
+
+        res = await approve_change(user_id, args.get("change_id", ""))
+        return res, (
+            {"kind": "policy", "change": {"id": args.get("change_id"), **res}}
+            if res.get("ok")
+            else None
+        )
     return {"error": f"unknown function {name}"}, None
 
 
