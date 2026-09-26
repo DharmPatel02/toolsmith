@@ -70,7 +70,7 @@ class MongoStore:
 
     async def observations(self, user_id):
         rows = (
-            await self.db.observations.find({"meta.user_id": user_id}, {"_id": 0})
+            await self.db.observations.find({"meta.user_id": user_id}, {"_id": 0, "capture_key": 0})
             .sort("ts", 1)
             .to_list(length=None)
         )

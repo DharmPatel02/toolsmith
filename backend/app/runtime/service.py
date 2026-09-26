@@ -37,6 +37,12 @@ def _tool_identity(tool: dict) -> str:
     return str(tool.get("tool_id") or tool.get("_id"))
 
 
+async def update_after_run(run: Run) -> None:
+    from app.trust.service import update_after_run as trust_update_after_run
+
+    await trust_update_after_run(run)
+
+
 async def _active_tool_and_version(user_id: str, tool_id: str) -> tuple[dict, dict]:
     db = get_db()
     tool = await db.tools.find_one(
@@ -123,8 +129,6 @@ async def _run_live_tool(user_id: str, tool_id: str, params: dict, *, score: flo
     }
     await db.runs.insert_one(run_doc)
     try:
-        from app.trust.service import update_after_run
-
         await update_after_run(Run(**run_doc))
     except (ImportError, NotImplementedError):
         pass
