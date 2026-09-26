@@ -1,0 +1,48 @@
+{
+  "episodes": [
+    {
+      "session_id": "s_uc2_1",
+      "date": "2026-09-16T14:00:00Z",
+      "intent_summary": "Check vendor invoices against POs and log them",
+      "minutes": 15,
+      "tokens": 0,
+      "score": 0.94
+    },
+    {
+      "session_id": "s_uc2_2",
+      "date": "2026-09-18T14:00:00Z",
+      "intent_summary": "Check vendor invoices against POs and log them",
+      "minutes": 15,
+      "tokens": 0,
+      "score": 0.93
+    },
+    {
+      "session_id": "s_uc2_3",
+      "date": "2026-09-21T14:00:00Z",
+      "intent_summary": "Check vendor invoices against POs and log them",
+      "minutes": 15,
+      "tokens": 0,
+      "score": 0.95
+    }
+  ],
+  "frames": [
+    {
+      "frame_id": "f_uc2_inbox",
+      "ts": "2026-09-16T14:00:00Z",
+      "thumb_url": "/mock/uc2-inbox.png",
+      "verb": "email.open"
+    },
+    {
+      "frame_id": "f_uc2_tracker",
+      "ts": "2026-09-18T14:01:30Z",
+      "thumb_url": "/mock/uc2-tracker.png",
+      "verb": "tracker.upsert"
+    },
+    {
+      "frame_id": "f_uc2_slack",
+      "ts": "2026-09-21T14:02:15Z",
+      "thumb_url": "/mock/uc2-slack.png",
+      "verb": "slack.post"
+    }
+  ]
+}

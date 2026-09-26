@@ -1,5 +1,29 @@
 [
   {
+    "pattern_id": "pat_uc2",
+    "title": "Check vendor invoices against POs and log them",
+    "reason": "Three times a week you open invoice emails, check each line against the PO, update the tracker, and flag mismatches in Slack and Jira (about 15 minutes per batch).",
+    "support": 9,
+    "distinct_days": 9,
+    "est_minutes_saved_week": 45,
+    "value": 27.0,
+    "signature": [
+      "email.open",
+      "pdf.extract",
+      "table.join",
+      "invoice.validate",
+      "tracker.upsert",
+      "slack.post",
+      "jira.create"
+    ],
+    "dynamic_params": [
+      {
+        "name": "invoice",
+        "type": "file"
+      }
+    ]
+  },
+  {
     "pattern_id": "pat_uc3",
     "title": "Compare competitor prices and alert the team",
     "reason": "You checked PriceWatch and ShopB, compared prices and posted in #pricing on 14 weekdays in the last 3 weeks, about 12 minutes each.",
@@ -12,37 +36,13 @@
       "web.extract:list",
       "table.dedupe",
       "table.compare",
-      "report.html",
+      "export.html",
       "slack.post"
     ],
     "dynamic_params": [
       {
         "name": "threshold_pct",
         "type": "number"
-      }
-    ]
-  },
-  {
-    "pattern_id": "pat_uc2",
-    "title": "Check vendor invoices against POs and log them",
-    "reason": "Three times a week you open invoice emails, check each line against the PO, update the tracker, and flag mismatches in Slack and Jira (about 15 minutes per batch).",
-    "support": 9,
-    "distinct_days": 9,
-    "est_minutes_saved_week": 45,
-    "value": 27.0,
-    "signature": [
-      "email.open",
-      "pdf.extract:invoice",
-      "table.join:po",
-      "invoice.validate",
-      "tracker.upsert",
-      "slack.post",
-      "jira.create"
-    ],
-    "dynamic_params": [
-      {
-        "name": "invoice",
-        "type": "file"
       }
     ]
   },
@@ -72,8 +72,6 @@
         "name": "week",
         "type": "string"
       }
-    ],
-    "deleted_at": "2026-09-24T16:00:00Z",
-    "deleted_tool_id": "tool_uc1_old"
+    ]
   }
 ]

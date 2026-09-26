@@ -74,6 +74,8 @@ export interface ToolVersion {
 }
 
 export interface ToolDetail extends ToolSummary {
+  baseline_minutes?: number; // minutes the task took by hand, when known
+  race_intent?: string; // when a baseline-vs-tool race is available
   user_id: string;
   tier: "lean" | "heavy";
   active_version: number;
@@ -158,7 +160,9 @@ export interface Candidate {
 
 export interface Write {
   path: string;
-  kind: string;
+  kind: string; // file extension, or "action:<app>.<verb>"
+  bytes?: number | null;
+  payload?: Record<string, unknown> | null;
 }
 
 export interface RunResult {
@@ -172,6 +176,8 @@ export interface RunResult {
   route?: "found" | "related" | "not_found" | null;
   tool_id?: string | null;
   score?: number | null;
+  status?: "preview" | "done" | "awaiting_approval" | "failed" | null;
+  actions?: ActionItem[];
 }
 
 export interface PolicyChange {
@@ -332,7 +338,9 @@ export interface ActionItem {
   payload: Record<string, unknown>;
   description?: string;
   needs_approval?: boolean;
+  status?: "pending" | "done" | "failed" | "rejected" | "undone" | "cancelled";
   receipt?: Record<string, unknown> | null;
+  error?: string | null;
 }
 
 export interface Approval {

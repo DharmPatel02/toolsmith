@@ -2,6 +2,7 @@
 // Mock mode (NEXT_PUBLIC_USE_MOCKS=true, or the sidebar switch which overrides it per browser)
 // serves web/mocks/*.json and records each call in `mockLog`, so pages can be built without a backend.
 import type {
+  ActionItem,
   Approval,
   AutomationPlan,
   CaptureSession,
@@ -25,6 +26,7 @@ import type {
 } from "./types";
 
 import candidateMock from "@/mocks/candidate_uc1.json";
+import candidateUc2Mock from "@/mocks/candidate_uc2.json";
 import chatReplyMock from "@/mocks/chat_reply.json";
 import declinedMock from "@/mocks/declined.json";
 import ideaCoveredMock from "@/mocks/idea_covered.json";
@@ -34,9 +36,11 @@ import patternMock from "@/mocks/pattern_uc1.json";
 import policyMock from "@/mocks/policy.json";
 import runResultMock from "@/mocks/run_result.json";
 import suggestionsMock from "@/mocks/suggestions.json";
+import toolInvoiceMock from "@/mocks/tool_invoice.json";
 import toolMock from "@/mocks/tool_uc1.json";
 import toolsMock from "@/mocks/tools.json";
 import whyMock from "@/mocks/why_uc1.json";
+import whyUc2Mock from "@/mocks/why_uc2.json";
 
 export const API_BASE = (process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000").replace(/\/$/, "");
 const ENV_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS !== "false";
@@ -81,7 +85,9 @@ async function request<T>(method: "GET" | "POST", path: string, body?: unknown, 
     mockLog.push({ method, path, body, at: Date.now() });
     console.info(`[mock] ${method} ${path}`, body ?? "");
     await new Promise((r) => setTimeout(r, 150));
-    return clone<T>(mock());
+    const value = clone<T>(mock());
+    saveMockState(); // mocks mutate the demo state (connect, approve, run, delete, ...)
+    return value;
   }
   const res = await fetch(API_BASE + path, {
     method,
@@ -111,32 +117,141 @@ const mockState = {
   paused: false,
   mocksite: "v1" as "v1" | "v2",
   connected: new Set<string>(),
-  approvals: [
-    {
-      run_id: "run_inv_2202",
-      tool_id: "tool_invoice",
-      tool_title: "Invoice check and notify",
-      created_at: "2026-09-26T15:58:00Z",
-      summary: "INV-2202 · Acme Packaging · qty over PO on AC-14 (165 vs 150)",
-      actions: [
-        {
-          kind: "slack.post",
-          payload: { channel: "#warehouse", text: "INV-2202: AC-14 billed 165, PO-4102 ordered 150" },
-          description: "Post in #warehouse: INV-2202: AC-14 billed 165, PO-4102 ordered 150",
-          needs_approval: true,
-        },
-        {
-          kind: "jira.create",
-          payload: { summary: "INV-2202 quantity mismatch (AC-14)" },
-          description: "Open Jira ticket: INV-2202 quantity mismatch (AC-14)",
-          needs_approval: true,
-        },
-      ],
-    },
-  ] as Approval[],
-  runs: [] as RunSummary[],
+  approvals: [] as Approval[],
+  runs: [] as (RunSummary & { tool_id: string })[],
   deletedTools: new Set<string>(),
+  promoted: new Set<string>(), // tools built during this demo session
+  hiddenPatterns: new Set<string>(), // accepted, declined or snoozed suggestions
+  deletedAt: null as string | null,
 };
+
+// Invoice demo (UC2): what the real invoice tool reports for each synthetic invoice
+// (data/artifacts/uc2_invoices; verified by running the tool on the PDFs).
+const UC2_INVOICES: Record<string, { number: string; vendor: string; po: string; note: string }> = {
+  "inv-2201.pdf": { number: "INV-2201", vendor: "Northwind Supplies", po: "PO-4101", note: "" },
+  "inv-2202.pdf": { number: "INV-2202", vendor: "Acme Packaging", po: "PO-4102", note: "AC-14 qty 165 vs PO 150" },
+  "inv-2203.pdf": { number: "INV-2203", vendor: "BlueRiver Logistics", po: "PO-4103", note: "" },
+  "inv-2204.pdf": { number: "INV-2204", vendor: "Northwind Supplies", po: "PO-4104", note: "" },
+  "inv-2205.pdf": { number: "INV-2205", vendor: "Acme Packaging", po: "PO-4105", note: "AC-30 unit_price 2.45 vs PO 2.1" },
+  "inv-2206.pdf": { number: "INV-2206", vendor: "BlueRiver Logistics", po: "PO-4106", note: "" },
+  "inv-2207.pdf": { number: "INV-2207", vendor: "Acme Packaging", po: "PO-4107", note: "AC-14 qty 260 vs PO 220" },
+};
+
+function invoiceActions(file: string): ActionItem[] {
+  const inv = UC2_INVOICES[file] ?? UC2_INVOICES["inv-2202.pdf"];
+  const status = inv.note ? "mismatch" : "matched";
+  const items: ActionItem[] = [
+    {
+      kind: "tracker.upsert",
+      payload: { ref: inv.number, vendor: inv.vendor, status, note: inv.note },
+      description: `Mark ${inv.number} as ${status} in the tracker${inv.note ? ` (${inv.note})` : ""}`,
+      needs_approval: false,
+      status: "pending",
+    },
+  ];
+  if (inv.note) {
+    const text = `${inv.number} (${inv.vendor}) does not match ${inv.po}: ${inv.note}`;
+    items.push(
+      { kind: "slack.post", payload: { channel: "#warehouse", text }, description: `Post in #warehouse: ${text}`, needs_approval: true, status: "pending" },
+      {
+        kind: "jira.create",
+        payload: { summary: `${inv.number} mismatch vs ${inv.po}`, description: inv.note },
+        description: `Open Jira ticket: ${inv.number} mismatch vs ${inv.po}`,
+        needs_approval: true,
+        status: "pending",
+      },
+    );
+  }
+  return items;
+}
+
+function mockInvoiceRun(toolId: string, params: Record<string, unknown>, confirm: boolean): RunResult {
+  const file = String(params.invoice ?? "inv-2202.pdf");
+  const inv = UC2_INVOICES[file] ?? UC2_INVOICES["inv-2202.pdf"];
+  const items = invoiceActions(file);
+  const runId = `run_mock_${mockState.runs.length + 1}`;
+  const summary = `${inv.number} from ${inv.vendor}: ${inv.note ? `mismatch (${inv.note})` : "matched"}`;
+  let status: RunResult["status"] = "preview";
+  if (confirm) {
+    for (const item of items) {
+      if (!item.needs_approval) Object.assign(item, { status: "done", receipt: { id: `row_${inv.number}` } });
+    }
+    status = inv.note ? "awaiting_approval" : "done";
+    mockState.runs.unshift({ run_id: runId, tool_id: toolId, started_at: new Date().toISOString(), mode: "live", outcome: "success", status, duration_ms: 780, actions: items });
+    if (inv.note) {
+      mockState.approvals.unshift({
+        run_id: runId,
+        tool_id: toolId,
+        tool_title: "Invoice check and notify",
+        created_at: new Date().toISOString(),
+        summary,
+        actions: items.filter((i) => i.needs_approval),
+      });
+    }
+  }
+  return {
+    run_id: runId,
+    mode: confirm ? "live" : "dry_run",
+    output: { summary },
+    intended_writes: items.map((i) => ({ path: i.kind, kind: `action:${i.kind}`, payload: i.payload })),
+    needs_confirm: !confirm,
+    duration_ms: 780,
+    tokens: 0,
+    route: "found",
+    tool_id: toolId,
+    score: 1,
+    status,
+    actions: items,
+  };
+}
+
+function mockSuggestions(): Suggestion[] {
+  return (suggestionsMock as Suggestion[])
+    .filter((s) => !mockState.hiddenPatterns.has(s.pattern_id))
+    .map((s) =>
+      s.pattern_id === "pat_uc2" && mockState.deletedTools.has("tool_invoice")
+        ? { ...s, deleted_at: mockState.deletedAt, deleted_tool_id: "tool_invoice", reason: `${s.reason} Since you deleted the tool, you did it by hand 2 more times.` }
+        : s,
+    );
+}
+
+// Demo state survives a refresh during a presentation (per tab; Sets stored as arrays).
+const MOCK_STATE_KEY = "toolsmith.mockState";
+function saveMockState() {
+  try {
+    window.sessionStorage.setItem(MOCK_STATE_KEY, JSON.stringify(mockState, (_k, v) => (v instanceof Set ? { __set: [...v] } : v)));
+  } catch {
+    /* storage blocked: state lives until reload */
+  }
+}
+function restoreMockState() {
+  try {
+    const raw = typeof window === "undefined" ? null : window.sessionStorage.getItem(MOCK_STATE_KEY);
+    if (!raw) return;
+    const saved = JSON.parse(raw, (_k, v) => (v && typeof v === "object" && Array.isArray(v.__set) ? new Set(v.__set) : v));
+    Object.assign(mockState, saved);
+  } catch {
+    /* corrupt or blocked: start fresh */
+  }
+}
+restoreMockState();
+
+/** Starts the demo story over (Demo controls). */
+export function resetMockState() {
+  try {
+    window.sessionStorage.removeItem(MOCK_STATE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Mock mode: the consent popup (real consent page on the mock site) reports back here. */
+export function markMockConnected(app: string) {
+  mockState.connected.add(app);
+  saveMockState();
+}
+
+const MOCKSITE_PUBLIC = (process.env.NEXT_PUBLIC_MOCKSITE_URL ?? "http://localhost:8081").replace(/\/$/, "");
 
 type MockStep = [label: string, automation: "auto" | "approval" | "manual", connector: string | null, scope: string | null];
 const MOCK_STEPS: Record<string, MockStep> = {
@@ -212,7 +327,7 @@ const MOCK_CONNECTORS: [app: string, name: string, scopes: string[]][] = [
 /** Resolves a server-relative asset path (e.g. frame thumb_url) against the API. */
 export function assetUrl(path: string): string {
   if (/^https?:/.test(path)) return path;
-  if (isMockMode()) return "/mock-frame.webp";
+  if (isMockMode()) return path.startsWith("/mock/") ? path : "/mock-frame.webp";
   return API_BASE + path;
 }
 
@@ -268,35 +383,58 @@ export const api = {
     })),
 
   // Suggestions (P1)
-  suggestions: () => get<Suggestion[]>("/suggestions", () => suggestionsMock),
+  suggestions: () => get<Suggestion[]>("/suggestions", () => mockSuggestions()),
   declinedSuggestions: () => get<Suggestion[]>("/suggestions/declined", () => declinedMock),
-  why: (patternId: string) => get<WhyResponse>(`/suggestions/${patternId}/why`, () => whyMock),
+  why: (patternId: string) => get<WhyResponse>(`/suggestions/${patternId}/why`, () => (patternId === "pat_uc2" ? whyUc2Mock : whyMock)),
   acceptSuggestion: (patternId: string) =>
     post<{ ok: boolean; job_id?: string }>(`/suggestions/${patternId}/accept`, undefined, () => ({ ok: true, job_id: "job_mock_forge" })),
   declineSuggestion: (patternId: string, reason: string, neverForScope?: string) =>
-    post<{ ok: boolean }>(`/suggestions/${patternId}/decline`, { reason, never_for_scope: neverForScope }, () => ({ ok: true })),
-  snoozeSuggestion: (patternId: string) => post<{ ok: boolean }>(`/suggestions/${patternId}/snooze`, undefined, () => ({ ok: true })),
+    post<{ ok: boolean }>(`/suggestions/${patternId}/decline`, { reason, never_for_scope: neverForScope }, () => {
+      mockState.hiddenPatterns.add(patternId);
+      return { ok: true };
+    }),
+  snoozeSuggestion: (patternId: string) =>
+    post<{ ok: boolean }>(`/suggestions/${patternId}/snooze`, undefined, () => {
+      mockState.hiddenPatterns.add(patternId);
+      return { ok: true };
+    }),
 
   // Candidates (P2)
-  candidate: (id: string) => get<Candidate>(`/candidates/${id}`, () => candidateMock),
-  approveCandidate: (id: string) => post<{ tool_id: string }>(`/candidates/${id}/approve`, undefined, () => ({ tool_id: "tool_uc1" })),
+  candidate: (id: string) => get<Candidate>(`/candidates/${id}`, () => (id === "candidate_uc2" ? candidateUc2Mock : candidateMock)),
+  approveCandidate: (id: string) =>
+    post<{ tool_id: string }>(`/candidates/${id}/approve`, undefined, () => {
+      if (id !== "candidate_uc2") return { tool_id: "tool_uc1" };
+      mockState.promoted.add("tool_invoice");
+      mockState.deletedTools.delete("tool_invoice");
+      mockState.hiddenPatterns.add("pat_uc2");
+      return { tool_id: "tool_invoice" };
+    }),
   rejectCandidate: (id: string) => post<{ ok: boolean }>(`/candidates/${id}/reject`, undefined, () => ({ ok: true })),
   devForge: (pattern: unknown = patternMock) =>
     post<{ candidate_id: string }>("/dev/forge", { pattern }, () => ({ candidate_id: "candidate_fixture" })),
 
   // Tools (P1)
-  tools: () => get<ToolSummary[]>("/tools", () => toolsMock),
+  tools: () =>
+    get<ToolSummary[]>("/tools", () => {
+      const invoice = mockState.promoted.has("tool_invoice") && !mockState.deletedTools.has("tool_invoice");
+      const runs = mockState.runs.filter((r) => r.tool_id === "tool_invoice").length;
+      const base = (toolsMock as ToolSummary[]).filter((t) => !mockState.deletedTools.has(t.tool_id));
+      return invoice ? [{ ...(toolInvoiceMock as unknown as ToolSummary), runs }, ...base] : base;
+    }),
   tool: (id: string) =>
     get<ToolDetail>(`/tools/${id}`, () => {
+      if (id === "tool_invoice") return { ...toolInvoiceMock, runs: mockState.runs.filter((r) => r.tool_id === id).length };
       const summary = (toolsMock as ToolSummary[]).find((t) => t.tool_id === id);
       return { ...toolMock, ...summary, tool_id: id };
     }),
   lineage: (id: string) =>
     get<LineageTree>(`/tools/${id}/lineage`, () => ({ calls: [], merged_from: [], merged_into: null, dependents: [] })),
-  versions: (id: string) => get<ToolVersion[]>(`/tools/${id}/versions`, () => [toolMock.version]),
+  versions: (id: string) =>
+    get<ToolVersion[]>(`/tools/${id}/versions`, () => [id === "tool_invoice" ? toolInvoiceMock.version : toolMock.version]),
   rollback: (id: string, version: number) => post<{ ok: boolean }>(`/tools/${id}/rollback`, { version }, () => ({ ok: true })),
   runTool: (id: string, params: Record<string, unknown>, confirm = false) =>
     post<RunResult>(`/tools/${id}/run`, { params, confirm }, () => {
+      if (id === "tool_invoice") return mockInvoiceRun(id, params, confirm);
       const result = {
         ...runResultMock,
         run_id: `run_mock_${mockState.runs.length + 1}`,
@@ -309,6 +447,7 @@ export const api = {
       };
       if (confirm) {
         mockState.runs.unshift({
+          tool_id: id,
           run_id: result.run_id,
           started_at: new Date().toISOString(),
           mode: "live",
@@ -378,8 +517,14 @@ export const api = {
     ),
   connect: (app: string, scopes?: string[]) =>
     post<{ consent_url: string }>(`/connectors/${app}/connect`, { scopes }, () => {
-      mockState.connected.add(app); // mock: consent is granted at once
-      return { consent_url: "" };
+      // mock: the real consent page on the mock site, redirecting back to this app's /connectors
+      const query = new URLSearchParams({
+        app,
+        scopes: (scopes ?? []).join(","),
+        state: `mock_${app}`,
+        redirect_uri: `${window.location.origin}/connectors`,
+      });
+      return { consent_url: `${MOCKSITE_PUBLIC}/oauth/authorize?${query}` };
     }),
   revokeConnector: (app: string) =>
     post<{ app: string; status: string }>(`/connectors/${app}/revoke`, undefined, () => {
@@ -389,20 +534,45 @@ export const api = {
   approvals: () => get<Approval[]>("/approvals", () => mockState.approvals),
   decideApproval: (runId: string, decision: "approve" | "reject", note?: string) =>
     post<{ ok: boolean; executed?: number }>(`/approvals/${runId}`, { decision, note }, () => {
-      const item = mockState.approvals.find((a) => a.run_id === runId);
       mockState.approvals = mockState.approvals.filter((a) => a.run_id !== runId);
-      return { ok: true, executed: decision === "approve" ? (item?.actions.length ?? 0) : 0 };
+      const run = mockState.runs.find((r) => r.run_id === runId);
+      let executed = 0;
+      for (const item of run?.actions ?? []) {
+        if (item.status !== "pending") continue;
+        if (decision === "approve") {
+          Object.assign(item, { status: "done", receipt: { id: `${item.kind}_${runId}` } });
+          executed += 1;
+        } else item.status = "rejected";
+      }
+      if (run) run.status = decision === "approve" ? "done" : "rejected";
+      return { ok: true, executed };
     }),
-  toolRuns: (toolId: string) => get<RunSummary[]>(`/tools/${toolId}/runs`, () => mockState.runs),
+  toolRuns: (toolId: string) => get<RunSummary[]>(`/tools/${toolId}/runs`, () => mockState.runs.filter((r) => r.tool_id === toolId)),
   revertRun: (runId: string) =>
     post<{ ok: boolean; undone: number }>(`/runs/${runId}/revert`, undefined, () => {
       const run = mockState.runs.find((r) => r.run_id === runId);
+      let undone = 0;
+      for (const item of run?.actions ?? []) {
+        if (item.status === "done") {
+          item.status = "undone";
+          undone += 1;
+        } else if (item.status === "pending") item.status = "cancelled";
+      }
+      mockState.approvals = mockState.approvals.filter((a) => a.run_id !== runId);
       if (run) run.status = "reverted";
-      return { ok: true, undone: run?.actions.length ?? 0 };
+      return { ok: true, undone };
     }),
   deleteTool: (toolId: string, neverSuggestAgain = false) =>
     post<{ ok: boolean; blocked_reason?: string }>(`/tools/${toolId}/delete`, { never_suggest_again: neverSuggestAgain }, () => {
+      const waiting = mockState.approvals.filter((a) => a.tool_id === toolId).length;
+      if (waiting) return { ok: false, blocked_reason: `${waiting} run(s) are waiting for approval` };
       mockState.deletedTools.add(toolId);
+      mockState.promoted.delete(toolId);
+      mockState.deletedAt = new Date().toISOString();
+      if (toolId === "tool_invoice") {
+        if (neverSuggestAgain) mockState.hiddenPatterns.add("pat_uc2");
+        else mockState.hiddenPatterns.delete("pat_uc2"); // it's still repeating: suggest again
+      }
       return { ok: true };
     }),
   closeCaptureSession: () =>

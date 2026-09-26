@@ -11,7 +11,7 @@ import { CodeViewer, Markdown, ParamsTable, RequiresList } from "@/components/to
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { api } from "@/lib/api";
+import { api, isMockMode } from "@/lib/api";
 import { fmtDate, fmtMs, fmtPct } from "@/lib/format";
 import { useApi } from "@/lib/useApi";
 import { useEvents } from "@/lib/useEvents";
@@ -92,7 +92,7 @@ export default function ToolPage() {
               <RunPanel
                 toolId={id}
                 schema={v.params_schema}
-                baseline={{ minutes: 9, tokens: tokensBefore }}
+                baseline={t.baseline_minutes ? { minutes: t.baseline_minutes, tokens: t.race_intent ? tokensBefore : undefined } : undefined}
                 onConfirmed={() => setRunsVersion((n) => n + 1)}
               />
             </CardContent>
@@ -105,14 +105,16 @@ export default function ToolPage() {
               <RunHistory key={runsVersion} toolId={id} />
             </CardContent>
           </Card>
+          {(!isMockMode() || t.race_intent) && (
           <Card>
             <CardHeader>
               <CardTitle>Race</CardTitle>
             </CardHeader>
             <CardContent>
-              <RaceView intent={`make this week's ${t.title.toLowerCase()}`} inputs={{ file: ARTIFACT_FILES.at(-1) }} />
+              <RaceView intent={t.race_intent ?? `make this week's ${t.title.toLowerCase()}`} inputs={{ file: ARTIFACT_FILES.at(-1) }} />
             </CardContent>
           </Card>
+          )}
           <CodeViewer code={v.code} />
         </div>
 

@@ -3,6 +3,7 @@
 // Events: forge_started, forged (may repeat per stage), gate_passed / gate_failed. If an event carries
 // `data.stage`, the stepper jumps to it; otherwise each event advances one step.
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Check, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
@@ -49,6 +50,7 @@ export function forgeReducer(state: ForgeState, event: ToolsmithEvent): ForgeSta
 export function ForgeProgress({ patternId, onDone }: { patternId: string; onDone?: () => void }) {
   const [state, setState] = useState<ForgeState>({ step: 0, status: "running", candidateId: null });
   const [busy, setBusy] = useState(false);
+  const router = useRouter();
 
   useEvents(
     (event) => {
@@ -62,13 +64,14 @@ export function ForgeProgress({ patternId, onDone }: { patternId: string; onDone
 
   useEffect(() => {
     if (!isMockMode()) return;
+    const cid = patternId === "pat_uc2" ? "candidate_uc2" : "candidate_fixture";
     return replayMock(
       [
-        { type: "forge_started", ts: "", data: { pattern_id: patternId, candidate_id: "candidate_fixture", stage: "spec" } },
-        { type: "forged", ts: "", data: { candidate_id: "candidate_fixture", stage: "code" } },
-        { type: "forged", ts: "", data: { candidate_id: "candidate_fixture", stage: "tests" } },
-        { type: "forged", ts: "", data: { candidate_id: "candidate_fixture", stage: "replay" } },
-        { type: "gate_passed", ts: "", data: { candidate_id: "candidate_fixture" } },
+        { type: "forge_started", ts: "", data: { pattern_id: patternId, candidate_id: cid, stage: "spec" } },
+        { type: "forged", ts: "", data: { candidate_id: cid, stage: "code" } },
+        { type: "forged", ts: "", data: { candidate_id: cid, stage: "tests" } },
+        { type: "forged", ts: "", data: { candidate_id: cid, stage: "replay" } },
+        { type: "gate_passed", ts: "", data: { candidate_id: cid } },
       ],
       900,
     );
@@ -80,7 +83,8 @@ export function ForgeProgress({ patternId, onDone }: { patternId: string; onDone
     try {
       if (approve) {
         const { tool_id } = await api.approveCandidate(state.candidateId);
-        toast.success("Promoted to the tool shop at dry_run", { description: tool_id });
+        toast.success("Tool created: it starts in dry-run mode", { description: "Opening its one-page tutorial…" });
+        router.push(`/tools/${tool_id}`);
       } else {
         await api.rejectCandidate(state.candidateId);
         toast("Candidate rejected");

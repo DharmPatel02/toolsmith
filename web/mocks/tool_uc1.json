@@ -59,5 +59,7 @@
       "pattern_id": "pat_uc1"
     },
     "approved_at": null
-  }
+  },
+  "baseline_minutes": 9,
+  "race_intent": "make this week's weekly sales dashboard"
 }

@@ -9,7 +9,7 @@ import { ErrorState, PageHeader } from "@/components/common";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { api, isMockMode } from "@/lib/api";
+import { api, isMockMode, resetMockState } from "@/lib/api";
 import { fmtMs, fmtTime } from "@/lib/format";
 import type { ToolsmithEvent } from "@/lib/types";
 import { HEAL_STAGES, healReducer, type Heal, type Stage } from "@/lib/heal";
@@ -59,7 +59,25 @@ export default function DemoPage() {
 
   return (
     <>
-      <PageHeader title="Demo controls" description="Levers for the live demo. Every action here is a real API call." />
+      <PageHeader
+        title="Demo controls"
+        description="Levers for the live demo. Every action here is a real API call."
+        actions={
+          isMockMode() && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                resetMockState();
+                // full reload on purpose: it re-creates the in-memory demo state
+                // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+                window.location.href = "/onboarding";
+              }}
+            >
+              Restart demo story
+            </Button>
+          )
+        }
+      />
       <div className="grid gap-6 lg:grid-cols-3">
         <Card>
           <CardHeader>

@@ -7,7 +7,7 @@ import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { api, isMockMode } from "@/lib/api";
+import { api, isMockMode, markMockConnected } from "@/lib/api";
 import type { AutomationPlan, PlanPermission } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -64,8 +64,29 @@ export function PlanView({ plan, compact = false }: { plan: AutomationPlan; comp
 /** Opens the app's consent page and resolves once the grant shows up (or the popup is closed). */
 export async function connectApp(app: string, scopes?: string[]): Promise<boolean> {
   const { consent_url } = await api.connect(app, scopes);
-  if (isMockMode() || !consent_url) return true;
+  if (!consent_url) return true;
   const popup = window.open(consent_url, `connect-${app}`, "width=560,height=680");
+  if (isMockMode()) {
+    // demo mode: the real consent page on the mock site redirects to /connectors in the popup,
+    // which posts the user's answer back here
+    return new Promise((resolve) => {
+      const onMessage = (e: MessageEvent) => {
+        if (e.origin !== window.location.origin || e.data?.type !== "toolsmith-consent" || e.data.app !== app) return;
+        window.removeEventListener("message", onMessage);
+        clearInterval(closed);
+        if (e.data.ok) markMockConnected(app);
+        resolve(!!e.data.ok);
+      };
+      const closed = setInterval(() => {
+        if (popup && popup.closed) {
+          clearInterval(closed);
+          window.removeEventListener("message", onMessage);
+          resolve(false);
+        }
+      }, 500);
+      window.addEventListener("message", onMessage);
+    });
+  }
   if (!popup) {
     window.location.href = consent_url; // popup blocked: full-page consent, returns to /connectors
     return false;

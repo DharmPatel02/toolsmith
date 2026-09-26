@@ -22,7 +22,7 @@
     "minutes_saved": 84
   },
   {
-    "tool_id": "tool_invoice",
+    "tool_id": "tool_variance",
     "name": "monthly_variance_audit",
     "title": "Monthly variance audit",
     "status": "active",

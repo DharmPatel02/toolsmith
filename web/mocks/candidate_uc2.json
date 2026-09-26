@@ -1,0 +1,160 @@
+{
+  "_id": "candidate_uc2",
+  "user_id": "u_1",
+  "pattern_id": "pat_uc2",
+  "idea_id": null,
+  "spec": {
+    "name": "invoice_check_and_notify",
+    "title": "Invoice check and notify",
+    "purpose": "Checks each vendor invoice against its purchase order, logs it in the tracker, and flags mismatches to the warehouse team.",
+    "params_schema": {
+      "type": "object",
+      "properties": {
+        "invoice": {
+          "type": "string",
+          "format": "file",
+          "description": "the invoice PDF from the inbox"
+        },
+        "po": {
+          "type": "string",
+          "format": "file",
+          "description": "the purchase-order table"
+        }
+      },
+      "required": [
+        "invoice",
+        "po"
+      ]
+    },
+    "outputs": {
+      "tables": [
+        "issues"
+      ],
+      "chart": false,
+      "files": []
+    },
+    "requires": {
+      "scopes": [
+        "app:email",
+        "app:tracker",
+        "app:slack",
+        "app:jira"
+      ],
+      "deps": [
+        "pandas",
+        "openpyxl"
+      ],
+      "tools": []
+    },
+    "keywords": [
+      "invoice",
+      "purchase order",
+      "warehouse",
+      "mismatch",
+      "tracker"
+    ],
+    "steps": [
+      "read the invoice PDF",
+      "match lines against the PO",
+      "log it in the tracker",
+      "flag mismatches in Slack and Jira"
+    ],
+    "derivation": {
+      "observed_tier": "T1",
+      "execution_path": "api"
+    },
+    "automation": [
+      {
+        "label": "Read new invoices from the inbox",
+        "automation": "auto",
+        "connector": "email"
+      },
+      {
+        "label": "Extract invoice number, lines and totals from the PDF",
+        "automation": "auto",
+        "connector": null
+      },
+      {
+        "label": "Match against the reference table",
+        "automation": "auto",
+        "connector": null
+      },
+      {
+        "label": "Check quantities and prices against the PO",
+        "automation": "auto",
+        "connector": null
+      },
+      {
+        "label": "Add or update the tracker row",
+        "automation": "auto",
+        "connector": "tracker"
+      },
+      {
+        "label": "Post an alert in Slack",
+        "automation": "approval",
+        "connector": "slack"
+      },
+      {
+        "label": "Open a Jira ticket for the mismatch",
+        "automation": "approval",
+        "connector": "jira"
+      }
+    ],
+    "not_automatable": null
+  },
+  "code": "import re\n\n\ndef run(ctx, invoice, po, **params):\n    \"\"\"Check one vendor invoice against its purchase order; log it; flag mismatches.\"\"\"\n    text = ctx.read_text(\"invoice\")\n    number = re.search(r\"Invoice number:\\s*(\\S+)\", text).group(1)\n    po_number = re.search(r\"PO number:\\s*(\\S+)\", text).group(1)\n    vendor = text.splitlines()[0].strip()\n    tokens = [t.strip() for t in text.splitlines() if t.strip()]\n    orders = ctx.read_table(\"po\")\n    lines = orders[orders[\"po_number\"] == po_number]\n\n    issues = []\n    for _, row in lines.iterrows():\n        i = tokens.index(row[\"sku\"])  # SKU, description, qty, unit price, amount\n        qty, price = int(tokens[i + 2]), float(tokens[i + 3])\n        if qty != int(row[\"qty\"]):\n            issues.append({\"sku\": row[\"sku\"], \"field\": \"qty\", \"po\": int(row[\"qty\"]), \"invoice\": qty})\n        if abs(price - float(row[\"unit_price\"])) > 0.005:\n            issues.append({\"sku\": row[\"sku\"], \"field\": \"unit_price\",\n                           \"po\": float(row[\"unit_price\"]), \"invoice\": price})\n\n    status = \"mismatch\" if issues else \"matched\"\n    note = \"; \".join(f\"{i['sku']} {i['field']} {i['invoice']} vs PO {i['po']}\" for i in issues)\n    ctx.action(\"tracker.upsert\", ref=number, vendor=vendor, status=status, note=note)\n    if issues:\n        ctx.action(\"slack.post\", channel=\"#warehouse\",\n                   text=f\"{number} ({vendor}) does not match {po_number}: {note}\")\n        ctx.action(\"jira.create\", summary=f\"{number} mismatch vs {po_number}\", description=note)\n    return {\"summary\": f\"{number} from {vendor}: {status}\" + (f\" ({note})\" if note else \"\"),\n            \"tables\": {\"issues\": issues}}\n",
+  "tests": "import pandas as pd\n\nPO = pd.DataFrame([{\"po_number\": \"PO-1\", \"sku\": \"A\", \"qty\": 10, \"unit_price\": 2.0}])\nTEXT = \"Vendor\\nInvoice number: INV-1\\nPO number: PO-1\\nA\\nWidget\\n12\\n2.00\\n24.00\\n\"\n\n\ndef test_flags_quantity_over_po():\n    ctx = FakeCtx(tables={\"po\": PO}, texts={\"invoice\": TEXT})\n    out = run(ctx, invoice=\"invoice\", po=\"po\")\n    assert out[\"tables\"][\"issues\"] == [{\"sku\": \"A\", \"field\": \"qty\", \"po\": 10, \"invoice\": 12}]\n    assert [a[\"kind\"] for a in ctx.actions] == [\"tracker.upsert\", \"slack.post\", \"jira.create\"]\n\n\ndef test_clean_invoice_only_logs():\n    ctx = FakeCtx(tables={\"po\": PO}, texts={\"invoice\": TEXT.replace(\"\\n12\\n\", \"\\n10\\n\")})\n    run(ctx, invoice=\"invoice\", po=\"po\")\n    assert [a[\"kind\"] for a in ctx.actions] == [\"tracker.upsert\"]\n",
+  "tutorial_md": "# Invoice check and notify\n\n## What it does\nChecks each vendor invoice against its purchase order, logs it in the tracker, and flags mismatches to the warehouse team. Steps: read the invoice PDF; match lines against the PO; log it in the tracker; flag mismatches in Slack and Jira.\n\n## What's automated\n- Read new invoices from the inbox\n- Extract invoice number, lines and totals from the PDF\n- Match against the reference table\n- Check quantities and prices against the PO\n- Add or update the tracker row\n\n## What needs your approval\n- Post an alert in Slack\n- Open a Jira ticket for the mismatch\n\n## What you give it\n- **invoice**: a file (the invoice PDF from the inbox)\n- **po**: a file (the purchase-order table)\n\n## What you get back\ntable issues.\n\n## Example\nRun it with invoice = inv-2202.pdf and po = po.xlsx: INV-2202 from Acme Packaging bills 165 \u00d7 AC-14 but PO-4102 ordered 150, so the tracker row is marked mismatch and a Slack alert and Jira ticket wait for your approval.\n\n## Permissions used\n- read and send email\n- update the tracker\n- post messages in Slack\n- open Jira tickets\n\n## How to undo or delete\nEvery confirmed run can be undone from the tool page. Delete the tool any time; ToolSmith may suggest it again later unless you choose \"Don't suggest again\".\n\n## Limits\nOnly handles inputs shaped like the ones it was built from; anything else stops with a clear error instead of guessing.\n",
+  "params_schema": {
+    "type": "object",
+    "properties": {
+      "invoice": {
+        "type": "string",
+        "format": "file",
+        "description": "the invoice PDF from the inbox"
+      },
+      "po": {
+        "type": "string",
+        "format": "file",
+        "description": "the purchase-order table"
+      }
+    },
+    "required": [
+      "invoice",
+      "po"
+    ]
+  },
+  "requires": {
+    "scopes": [
+      "app:email",
+      "app:tracker",
+      "app:slack",
+      "app:jira"
+    ],
+    "deps": [
+      "pandas",
+      "openpyxl"
+    ],
+    "tools": []
+  },
+  "derivation": {
+    "observed_tier": "T1",
+    "execution_path": "api"
+  },
+  "verdict_id": "verdict_uc2",
+  "verdict": {
+    "_id": "verdict_uc2",
+    "tool_id": null,
+    "candidate_version": 1,
+    "checks": {
+      "unit": true,
+      "replay": true,
+      "side_effects": true,
+      "dedupe": true
+    },
+    "decision": "passed",
+    "reason": "Replayed on 6 past invoices: the 2 mismatches (INV-2202 qty, INV-2205 price) and 4 clean invoices all match what you did by hand."
+  },
+  "status": "passed",
+  "created_at": "2026-09-26T16:00:00Z"
+}

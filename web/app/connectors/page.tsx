@@ -23,8 +23,12 @@ export default function ConnectorsPage() {
     const q = new URLSearchParams(window.location.search);
     const status = q.get("status");
     const error = q.get("error");
-    if (!status && !error) return;
+    const code = q.get("code"); // demo mode: the consent page redirected straight here
+    if (!status && !error && !code) return;
     if (window.opener && window.opener !== window) {
+      if (code || error) {
+        window.opener.postMessage({ type: "toolsmith-consent", app: q.get("app"), ok: !!code }, window.location.origin);
+      }
       window.close(); // the page that opened the consent popup is polling for the grant
       return;
     }
