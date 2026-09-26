@@ -73,7 +73,8 @@ def _ruff(src: str, label: str, known_names: set[str]) -> list[str]:
     builtins = ",".join(f'"{n}"' for n in sorted(known_names))
     args = [*cmd, "check", "--isolated", "--select", RUFF_SELECT, "--output-format", "concise",
             "--config", f"builtins=[{builtins}]", "--stdin-filename", "tool.py", "-"]
-    proc = subprocess.run(args, input=src, capture_output=True, text=True, timeout=30, check=False)
+    proc = subprocess.run(args, input=src, capture_output=True, text=True, encoding="utf-8",
+                          timeout=30, check=False)  # Windows default is cp1252; ruff needs UTF-8
     if proc.returncode == 0:
         return []
     lines = [ln.split("tool.py:", 1)[-1].strip() for ln in proc.stdout.splitlines() if "tool.py:" in ln]

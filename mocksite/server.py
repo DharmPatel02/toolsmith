@@ -119,14 +119,17 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def write_snapshots():
-    """Cached HTML for the UC3 replay gate: products page in both layouts."""
+    """Cached HTML for the UC3 replay gate: products page in both layouts.
+    Also written to data/artifacts/uc3/{v1,v2}.html, where P2's UC3 seed and heal read them."""
     out = HERE / "snapshots"
+    artifacts = HERE.parent / "data" / "artifacts" / "uc3"
     out.mkdir(exist_ok=True)
+    artifacts.mkdir(parents=True, exist_ok=True)
     for name in LAYOUT_NAMES:
-        (out / f"products_{name}.html").write_text(
-            render(name, "/products", {})[1], encoding="utf-8"
-        )
-    print(f"wrote {out}")
+        html = render(name, "/products", {})[1]
+        (out / f"products_{name}.html").write_text(html, encoding="utf-8")
+        (artifacts / f"{name}.html").write_text(html, encoding="utf-8")
+    print(f"wrote {out} and {artifacts}")
 
 
 def main():
