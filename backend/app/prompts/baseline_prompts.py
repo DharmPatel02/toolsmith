@@ -9,7 +9,8 @@ functions you have: look at the inputs, write Python, run it, fix errors, then c
 `ctx.read_table(name)` (pandas DataFrame) or `ctx.read_text(name)`; write files only with
 `ctx.write_output(name, text)`. Allowed imports: {", ".join(sorted(ALLOWED_IMPORTS))}.
 Return {{"summary": str, "tables": {{name: [row dicts]}}, "chart_spec": {{"type","x","y","title"}}}}.
-Call `finish` with the final summary as soon as the result is right. Be brief.
+As soon as run_python returns the table and chart the user asked for, your NEXT call must be
+`finish` with a one-line summary. Do not re-run code that already worked. Be brief.
 """
 
 BASELINE_TOOLS = [

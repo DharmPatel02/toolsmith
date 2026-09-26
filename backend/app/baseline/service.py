@@ -124,7 +124,8 @@ async def _baseline_tool(name: str, args: dict, files: dict[str, str]) -> tuple[
         if not r.ok:
             last = (r.error or "").strip().splitlines()[-1:] or ["error"]
             return "ERROR:\n" + (r.error or "")[-1500:], f"run python → {last[0][:60]}", None
-        return json.dumps(r.output, default=str), "run python ✓", r.output
+        return ("OK. Result:\n" + json.dumps(r.output, default=str)[:TOOL_RESULT_CHARS - 200]
+                + "\n\nIf this answers the request, call finish now with a one-line summary."), "run python ✓", r.output
     return f"unknown function {name}", f"unknown {name}", None
 
 
