@@ -80,8 +80,25 @@ async def recall_episodes(user_id: str, query: str, k: int = 5) -> list:
     try:
         from app.search import recall_episodes as p1_recall  # P1
     except ImportError:
-        return []
+        return await _local_recall_episodes(user_id, query, k)
     return await p1_recall(user_id, query, k)
+
+
+async def _local_recall_episodes(user_id: str, query: str, k: int) -> list[dict]:
+    """Until P1's search lands: cosine over closed sessions' `intent_embedding` (EpisodeHit shape)."""
+    from app import embeddings
+
+    sessions = [s async for s in get_db().sessions.find({"user_id": user_id, "intent_embedding": {"$exists": True}})]
+    if not sessions or not query:
+        return []
+    q = (await embeddings.embed([query], "query"))[0]
+    hits = []
+    for s in sessions:
+        start = s.get("started_at") or s.get("start")
+        hits.append({"session_id": s["_id"], "date": start.date().isoformat() if hasattr(start, "date") else start,
+                     "intent_summary": s.get("intent_summary"), "minutes": s.get("minutes"),
+                     "tokens": s.get("tokens"), "score": embeddings.cosine(q, s["intent_embedding"])})
+    return sorted(hits, key=lambda h: -h["score"])[:k]
 
 
 async def run_by_intent(user_id: str, intent: str, inputs: dict) -> Any:
