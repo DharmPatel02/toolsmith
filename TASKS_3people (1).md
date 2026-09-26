@@ -604,15 +604,15 @@ Build UI against `web/mocks/*.json` first (`NEXT_PUBLIC_USE_MOCKS=true`), then s
 #### ⇄ I-1 (12:15–12:45): lead the extension check, then I-1b with P2 — see §6.2
 
 #### Phase 2 (12:45–14:00)
-- [ ] **P3.2.1** Live forge progress: after Accept, show a stepper (spec → code → tests → replay → tutorial) driven by SSE events; Approve / Reject buttons on passed candidates. **P0**
+- [x] **P3.2.1** Live forge progress: after Accept, show a stepper (spec → code → tests → replay → tutorial) driven by SSE events; Approve / Reject buttons on passed candidates. **P0**
   *Test:* with mocks, events move the stepper to "passed".
-- [ ] **P3.2.2** Run panel on tool detail: form generated from `params_schema` (file picker from `data/artifacts` list), dry-run preview showing intended writes + Confirm; show duration and tokens vs agent baseline ("9 min → 8 s, 18k → 0.5k tokens"). **P0**
+- [x] **P3.2.2** Run panel on tool detail: form generated from `params_schema` (file picker from `data/artifacts` list), dry-run preview showing intended writes + Confirm; show duration and tokens vs agent baseline ("9 min → 8 s, 18k → 0.5k tokens"). **P0**
   *Test:* dry_run → preview; confirm → result.
 - [ ] **P4.2.3** Concierge `POST /chat`: LiteLLM tool-calling loop (lean tier) with tools `search_tools`, `recall_episodes`, `analyze_idea`, `run_tool`, `submit_feedback`, `approve_change`; state in `conversations`; returns `cards` for the UI. **P0**
   *Test:* "why did you suggest the dashboard tool?" → cites dated episodes; "run it on week4.xlsx" → dry-run preview.
-- [ ] **P4.2.4** `POST /ideas` `analyze_idea`: covered by existing tool? feasibility, scopes, deps, savings estimate from history → refined spec **or** "use tool Y"; if the user confirms, call `forge_from_spec`. **P0 (minimal)**
+- [x] **P4.2.4** `POST /ideas` `analyze_idea`: covered by existing tool? feasibility, scopes, deps, savings estimate from history → refined spec **or** "use tool Y"; if the user confirms, call `forge_from_spec`. **P0 (minimal)**
   *Test:* an idea matching UC1 returns "use existing tool"; a new idea returns a spec.
-- [ ] **P3.2.3** Chat page: message list, input, rendering of `ChatReply.cards` (tool card, suggestion card, episode list). **P0**
+- [x] **P3.2.3** Chat page: message list, input, rendering of `ChatReply.cards` (tool card, suggestion card, episode list). **P0**
   *Test:* works against `fixtures/chat_reply.json`.
 - [ ] **P3.2.4** Switch to real API for everything built so far; fix shape mismatches (report any contract gaps in §8). **P0**
   *Test:* with `NEXT_PUBLIC_USE_MOCKS=false` all pages load from the backend.
@@ -622,19 +622,19 @@ Build UI against `web/mocks/*.json` first (`NEXT_PUBLIC_USE_MOCKS=true`), then s
 **14:30 UI check:** if suggestions → forge → run doesn't work in Next.js by now, the team decides on the Streamlit fallback (only if the event rules allow it).
 
 #### Phase 3 (14:30–15:15)
-- [ ] 🆕 **P3.3.5** **Evidence strip** in the "Why?" drawer: 3 dated thumbnails (`/frames/{id}/thumb`) + the detected step list under them (`file.open → table.rename → … → export.html`). **P0, never cut**
+- [x] 🆕 **P3.3.5** **Evidence strip** in the "Why?" drawer: 3 dated thumbnails (`/frames/{id}/thumb`) + the detected step list under them (`file.open → table.rename → … → export.html`). **P0, never cut**
   *Test:* renders UC1 frames from the real API.
 - [ ] 🆕 **P3.3.7** **Split-screen race view** on the run panel: left = baseline agent (step counter, tokens climbing), right = tool (FOUND → `working_memory` → result); both sides stream `race_step` from SSE; freeze on final steps / seconds / tokens. Calls `POST /race`. **P0**
   *Test:* both sides stream from SSE (mock `race.jsonl`, then real).
-- [ ] **P3.3.1** **Policy strip** (always visible at the bottom): live feed of `policy.changes` via SSE — `min_support 3 → 4 · because 3 of last 4 tools were pruned · applied`, pending loosen changes with an Approve button; prune-kept messages ("kept: tool Y depends on it"). **P0**
+- [x] **P3.3.1** **Policy strip** (always visible at the bottom): live feed of `policy.changes` via SSE — `min_support 3 → 4 · because 3 of last 4 tools were pruned · applied`, pending loosen changes with an Approve button; prune-kept messages ("kept: tool Y depends on it"). **P0**
   *Test:* a `policy_changed` event appears in the strip within 1 s.
-- [ ] ✏️ **P3.3.2** Metrics page (Recharts), **7 charts** (all 6 original + ablation): minutes saved/week, tokens before vs after, break-even runs, replay pass rate, toolbox size over time, detection P/R with decoy false-positive rate, **logs-only vs logs+screen ablation**. **P0**
+- [x] ✏️ **P3.3.2** Metrics page (Recharts), **7 charts** (all 6 original + ablation): minutes saved/week, tokens before vs after, break-even runs, replay pass rate, toolbox size over time, detection P/R with decoy false-positive rate, **logs-only vs logs+screen ablation**. **P0**
   *Test:* renders `fixtures/metrics.json`.
-- [ ] **P3.3.3** Demo controls panel: "Switch mock site to v2", "Run consolidation", "Run prune" buttons; heal timeline (drift → patch → gated → promoted with time-to-heal). **P0**
+- [x] **P3.3.3** Demo controls panel: "Switch mock site to v2", "Run consolidation", "Run prune" buttons; heal timeline (drift → patch → gated → promoted with time-to-heal). **P0**
   *Test:* buttons call `/demo/mocksite/v2`, `/consolidate` and the prune trigger.
-- [ ] **P4.3.1** Demo data reset script: `scripts/demo_reset.py` → reset DB, seed history (+ frames), pre-load cached generations, set mock site v1, **freeze `action_vocab`**. **P0**
+- [x] **P4.3.1** Demo data reset script: `scripts/demo_reset.py` → reset DB, seed history (+ frames), pre-load cached generations, set mock site v1, **freeze `action_vocab`**. **P0**
   *Test:* running it twice gives the same starting screen.
-- [ ] 🆕 **P3.3.6** Capture panel: pause/resume, allow-list view, delete last 5 min, audit list from `GET /capture/sessions`. **P1**
+- [x] 🆕 **P3.3.6** Capture panel: pause/resume, allow-list view, delete last 5 min, audit list from `GET /capture/sessions`. **P1**
   *Test:* pause stops new frames within 2 s.
 - [ ] **P3.3.4** Deploy `web/` to Vercel pointing at the backend URL (partner stack). **P1** *(restored to original priority)*
   *Test:* public URL loads the tool shop.
@@ -642,7 +642,7 @@ Build UI against `web/mocks/*.json` first (`NEXT_PUBLIC_USE_MOCKS=true`), then s
 
 #### Demo prep (15:35–16:40)
 - [ ] **P4.3.3** Record the fallback demo video (full 3-min script from plan §14). **P0**
-- [ ] ✏️ **P4.3.4** README draft: problem, architecture diagram, how to run (incl. loading the extension), "built today" vs dependencies, **Atlas feature map** (plan §2.1), privacy controls, partner stacks used (MongoDB, OpenAI, OpenRouter, Vercel, …). **P0**
+- [x] ✏️ **P4.3.4** README draft: problem, architecture diagram, how to run (incl. loading the extension), "built today" vs dependencies, **Atlas feature map** (plan §2.1), privacy controls, partner stacks used (MongoDB, OpenAI, OpenRouter, Vercel, …). **P0**
 
 ---
 
