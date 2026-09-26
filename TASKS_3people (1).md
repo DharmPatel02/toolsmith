@@ -429,7 +429,7 @@ Because nothing is cut, the priority rule in §0.1 item 9 matters: P0 first, the
   *Test:* stub accepts `fixtures/capture_batch.json` and returns a `CaptureAck`.
 - [ ] **P2.0.1** Install Docker SDK, pull `python:3.11-slim`, confirm `network_mode=none` container runs.
 - [ ] **P4.0.1** Start `data/generator/` skeleton; commit `data/ground_truth/`, `data/action_vocab_seed.json` (recordings stay git-ignored, shared by drive/USB); confirm `ffmpeg` is installed.
-- [ ] **P3.0.1** `npx create-next-app web` (TypeScript, Tailwind, App Router) + shadcn/ui init; create `extension/` folder with an MV3 `manifest.json` skeleton.
+- [x] **P3.0.1** `npx create-next-app web` (TypeScript, Tailwind, App Router) + shadcn/ui init; create `extension/` folder with an MV3 `manifest.json` skeleton.
 
 > 3-person owner: **P4.0.1 → P2** (creates the data folders and checks ffmpeg; P1 fills the generator in Phase 1).
 
@@ -585,20 +585,20 @@ After P1 pushes: everyone `git pull`, then create your branch: `p1-core`, `p2-fo
 Build UI against `web/mocks/*.json` first (`NEXT_PUBLIC_USE_MOCKS=true`), then switch to the real API at integration.
 
 #### Phase 1 (10:50–12:15)
-- [ ] 🆕 **P3.1.0** Chrome MV3 extension (TypeScript) in `extension/` — **10:50–11:50**:
+- [x] 🆕 **P3.1.0** Chrome MV3 extension (TypeScript) in `extension/` — **10:50–11:50**:
   content script captures click, submit, nav / SPA route change, typing-burst end (> 800 ms idle) with element `{role, name, data_attr}`, `url_template` and value **shape only (no key content)**; drops the frame if a password field is focused; service worker calls `captureVisibleTab` on trigger (≤ 1/s, ~400 ms after a click); host permission for `CAPTURE_ALLOWED_ORIGINS` only (the mock site); batched POST to `/capture/batch` every 5 s; toolbar badge "REC" + pause button; polls `GET /capture/state` every 2 s. **P0**
   *Test:* clicking through the mock site creates `ui_events` and `frames` in Atlas (against P1's stub: the POST body validates against `fixtures/capture_batch.json`); on any other site nothing is captured.
-- [ ] **P4.1.3** Mock site: `mocksite/v1/` and `v2/` (same data, different HTML structure: renamed classes, moved price element), tiny static server on port 8081 with `POST /demo/mocksite/{v1|v2}` switch (router `p3_demo.py` can proxy to it — was `p4_demo.py`); cached HTML snapshots as UC3 fixtures + expected parsed output. Make sure pages have real buttons/forms with accessible names (the extension reads them). **P0**
+- [x] **P4.1.3** Mock site: `mocksite/v1/` and `v2/` (same data, different HTML structure: renamed classes, moved price element), tiny static server on port 8081 with `POST /demo/mocksite/{v1|v2}` switch (router `p3_demo.py` can proxy to it — was `p4_demo.py`); cached HTML snapshots as UC3 fixtures + expected parsed output. Make sure pages have real buttons/forms with accessible names (the extension reads them). **P0**
   *Test:* v1 and v2 both serve; the v1 parser fails on v2 (that's the heal demo).
-- [ ] **P3.1.1** App shell: Tailwind + shadcn/ui, sidebar nav (Tool shop · Suggestions · Chat · Policy & metrics), light/dark. **P0**
+- [x] **P3.1.1** App shell: Tailwind + shadcn/ui, sidebar nav (Tool shop · Suggestions · Chat · Policy & metrics), light/dark. **P0**
   *Test:* all pages render with mocks, no console errors.
-- [ ] ✏️ **P3.1.2** `lib/api.ts`: typed client for every endpoint in §3.4 (incl. capture, lineage, race) with the mock toggle; `lib/useEvents.ts` SSE hook (mock: replays `events.jsonl` / `race.jsonl` on a timer). **P0**
+- [x] ✏️ **P3.1.2** `lib/api.ts`: typed client for every endpoint in §3.4 (incl. capture, lineage, race) with the mock toggle; `lib/useEvents.ts` SSE hook (mock: replays `events.jsonl` / `race.jsonl` on a timer). **P0**
   *Test:* toggle mocks on/off without code changes.
-- [ ] **P3.1.3** Tool shop page: tool cards (name, trust badge, runs, success rate, minutes saved) + big "minutes saved this week" counter + toolbox count + recorder status badge. **P0**
+- [x] **P3.1.3** Tool shop page: tool cards (name, trust badge, runs, success rate, minutes saved) + big "minutes saved this week" counter + toolbox count + recorder status badge. **P0**
   *Test:* renders `fixtures/tool_uc1.json` list.
-- [ ] **P3.1.4** Suggestions page: cards with reason, support, distinct days, est. minutes saved; Accept / Decline (with "never for this" option) / Snooze; a **"Why?"** drawer listing dated episodes (frames added in P3.3.5); a "Declined by ToolSmith" section showing decoys with their reason. **P0**
+- [x] **P3.1.4** Suggestions page: cards with reason, support, distinct days, est. minutes saved; Accept / Decline (with "never for this" option) / Snooze; a **"Why?"** drawer listing dated episodes (frames added in P3.3.5); a "Declined by ToolSmith" section showing decoys with their reason. **P0**
   *Test:* buttons call the right API functions (check network tab / mock log).
-- [ ] ✏️ **P3.1.5** Candidate/tool detail page: tutorial (render markdown), params schema, **execution path badge** ("seen in Excel · runs on pandas"), code viewer (collapsed), verdict checks (unit / replay / side effects / dedupe as green/red), versions list. *(may slip to the start of Phase 2)* **P0**
+- [x] ✏️ **P3.1.5** Candidate/tool detail page: tutorial (render markdown), params schema, **execution path badge** ("seen in Excel · runs on pandas"), code viewer (collapsed), verdict checks (unit / replay / side effects / dedupe as green/red), versions list. *(may slip to the start of Phase 2)* **P0**
   *Test:* renders fixture candidate and tool.
 
 #### ⇄ I-1 (12:15–12:45): lead the extension check, then I-1b with P2 — see §6.2
@@ -780,6 +780,15 @@ Format: `HH:MM · from PN · to owner PM · what + why · status (open / done)`
 - pre · board · to P1 · `GET /capture/state`, `POST /capture/{pause|resume}`, `POST /capture/delete_last` (the extension and capture panel need a shared pause state) · open
 - pre · board · to P4 · `POST /race` + `race_step` payload shape (§3.4) so P3 can build the race view against a fixture · open
 - pre · board · to P1 · `embed_multimodal()` in `embeddings.py` and `interpret` job type · open
+
+---
+
+**From P3 (12:50):**
+- 12:50 · from P3 · to P1 · compose `api` needs `MOCKSITE_URL=http://mocksite:8081` (the `/demo/mocksite/{v1|v2}` proxy in `p3_demo.py` can't reach localhost:8081 from the container) · open
+- 12:50 · from P3 · to P1 · compose `web` runs `npm install` into the bind-mounted `web/node_modules` → Linux binaries replace the host's; add an anonymous volume `/workspace/web/node_modules` · open
+- 12:50 · from P3 · to P1 · `POST /prune` (or equivalent) for the demo-controls "Run prune" button (P3.3.3); not in §3.4 · open
+- 12:50 · from P3 · to P1/P2 · forge SSE events: please include `pattern_id`/`candidate_id` and optionally `stage` (spec|code|tests|replay|tutorial) in `data`; the UI stepper follows them · open
+- 12:50 · from P3 · to all · `ChatReply.cards` shape: `{kind: tool|suggestion|episodes|run|idea, ...}` (see `web/lib/types.ts` ChatCard) · done
 
 ---
 
