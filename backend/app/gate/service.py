@@ -26,6 +26,7 @@ from app.sandbox import run_in_sandbox
 FLOAT_TOL = 0.01
 DEFAULT_MERGE_SIMILARITY = 0.90
 UNIT_TIMEOUT_S = 60
+REPLAY_TIMEOUT_S = 60  # cold pandas import in a fresh process is slow on a loaded laptop
 
 
 async def run_gate(candidate_id: str) -> dict:
@@ -144,7 +145,7 @@ async def check_replay(cand: dict) -> dict:
     scopes = (cand.get("requires") or {}).get("scopes", [])
     runs = await asyncio.gather(*[
         run_in_sandbox(cand["code"], "run", c["params"], {k: str(resolve_artifact(v)) for k, v in c["inputs"].items()},
-                       "dry_run", scopes) for c in cases])
+                       "dry_run", scopes, timeout_s=REPLAY_TIMEOUT_S) for c in cases])
     results, writes = [], []
     for case, r in zip(cases, runs, strict=True):
         diffs = [f"run failed: {_short(r.error)}"] if not r.ok else compare_output(r.output, case["expected"])
