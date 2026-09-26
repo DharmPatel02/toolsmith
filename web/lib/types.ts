@@ -212,7 +212,8 @@ export type ChatCard =
   | { kind: "suggestion"; suggestion: Suggestion }
   | { kind: "episodes"; episodes: EpisodeHit[] }
   | { kind: "run"; run: RunResult }
-  | { kind: "idea"; idea: IdeaAnalysis };
+  | { kind: "idea"; idea: IdeaAnalysis }
+  | { kind: "tool_hits"; hits: { tool_id: string; name: string; score: number }[] };
 
 export interface ChatReply {
   conversation_id: string;

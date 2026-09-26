@@ -5,7 +5,9 @@ import type {
   CaptureSession,
   CaptureState,
   Candidate,
+  ChatCard,
   ChatReply,
+  EpisodeHit,
   IdeaAnalysis,
   LineageTree,
   Metrics,
@@ -109,6 +111,22 @@ export function assetUrl(path: string): string {
   return API_BASE + path;
 }
 
+/** P2's concierge emits `{type: "episodes"|"tools"|"run", items|result}`; the UI renders `{kind, ...}`. */
+function normalizeCard(card: unknown): ChatCard | null {
+  const c = card as Record<string, unknown>;
+  if (typeof c?.kind === "string") return c as unknown as ChatCard;
+  switch (c?.type) {
+    case "episodes":
+      return { kind: "episodes", episodes: (c.items ?? []) as EpisodeHit[] };
+    case "tools":
+      return { kind: "tool_hits", hits: (c.items ?? []) as { tool_id: string; name: string; score: number }[] };
+    case "run":
+      return { kind: "run", run: { ...(c.result as RunResult), tool_id: (c.tool_id as string) ?? (c.result as RunResult)?.tool_id } };
+    default:
+      return null;
+  }
+}
+
 export const api = {
   // Ingest + capture (P1)
   observationsBulk: (body: { user_id: string; events: unknown[] }) =>
@@ -199,8 +217,10 @@ export const api = {
   metrics: () => get<Metrics>("/metrics", () => metricsMock),
 
   // Concierge + ideas (P3)
-  chat: (message: string, conversationId?: string | null) =>
-    post<ChatReply>("/chat", { message, conversation_id: conversationId ?? null }, () => chatReplyMock),
+  chat: async (message: string, conversationId?: string | null) => {
+    const reply = await post<ChatReply>("/chat", { message, conversation_id: conversationId ?? null }, () => chatReplyMock);
+    return { ...reply, cards: (reply.cards ?? []).map(normalizeCard).filter((c): c is ChatCard => c !== null) };
+  },
   analyzeIdea: (text: string, confirm = false) =>
     post<IdeaAnalysis & { candidate_id?: string }>("/ideas", { text, confirm }, () =>
       /dashboard|sales|weekly/i.test(text) ? ideaCoveredMock : { ...ideaNewMock, candidate_id: confirm ? "candidate_fixture" : undefined },

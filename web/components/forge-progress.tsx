@@ -33,6 +33,9 @@ export function forgeReducer(state: ForgeState, event: ToolsmithEvent): ForgeSta
     case "forge_started":
       return { step: Math.max(stageIndex, 0), status: "running", candidateId };
     case "forged":
+      // P2 publishes `forged` with status "failed" when the forge itself fails (no gate follows).
+      if ((event.data as { status?: string }).status === "failed")
+        return { ...state, candidateId, status: "failed", reason: "forge failed before the gate" };
       return { ...state, candidateId, step: stageIndex >= 0 ? stageIndex + 1 : Math.min(state.step + 1, 3) };
     case "gate_passed":
       return { step: FORGE_STEPS.length, status: "passed", candidateId };
