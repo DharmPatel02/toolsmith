@@ -25,6 +25,33 @@
       "min_success_rate": 0.6
     }
   },
-  "rules": [],
-  "changes": []
+  "rules": [
+    {
+      "kind": "never_for_scope",
+      "scope": "/finance",
+      "from_feedback": "fb_12"
+    }
+  ],
+  "changes": [
+    {
+      "id": "chg_1",
+      "field": "thresholds.min_support",
+      "from": 3,
+      "to": 4,
+      "direction": "tighten",
+      "because": "3 of the last 4 tools were pruned",
+      "origin_feedback_ids": [],
+      "status": "applied"
+    },
+    {
+      "id": "chg_2",
+      "field": "thresholds.T_high",
+      "from": 0.82,
+      "to": 0.78,
+      "direction": "loosen",
+      "because": "12 found-routes in a row were accepted without edits",
+      "origin_feedback_ids": [],
+      "status": "pending"
+    }
+  ]
 }

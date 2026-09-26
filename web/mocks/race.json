@@ -4,11 +4,11 @@
     "ts": "2026-09-26T14:30:00Z",
     "data": {
       "race_id": "race_fixture",
-      "side": "tool",
+      "side": "baseline",
       "step": 1,
-      "label": "Synthetic fixture step 1",
-      "tokens": 250,
-      "elapsed_ms": 500.0,
+      "label": "read week4.xlsx",
+      "tokens": 1137,
+      "elapsed_ms": 2280,
       "done": false
     }
   },
@@ -18,23 +18,10 @@
     "data": {
       "race_id": "race_fixture",
       "side": "tool",
-      "step": 2,
-      "label": "Synthetic fixture step 2",
-      "tokens": 500,
-      "elapsed_ms": 1000.0,
-      "done": true
-    }
-  },
-  {
-    "type": "race_step",
-    "ts": "2026-09-26T14:30:00Z",
-    "data": {
-      "race_id": "race_fixture",
-      "side": "baseline",
       "step": 1,
-      "label": "Synthetic fixture step 1",
-      "tokens": 1200,
-      "elapsed_ms": 2000.0,
+      "label": "hybrid search: FOUND weekly_sales_rollup (0.93)",
+      "tokens": 180,
+      "elapsed_ms": 300,
       "done": false
     }
   },
@@ -45,9 +32,22 @@
       "race_id": "race_fixture",
       "side": "baseline",
       "step": 2,
-      "label": "Synthetic fixture step 2",
-      "tokens": 2400,
-      "elapsed_ms": 4000.0,
+      "label": "inspect columns",
+      "tokens": 2311,
+      "elapsed_ms": 4560,
+      "done": false
+    }
+  },
+  {
+    "type": "race_step",
+    "ts": "2026-09-26T14:30:00Z",
+    "data": {
+      "race_id": "race_fixture",
+      "side": "tool",
+      "step": 2,
+      "label": "working_memory: static v1 + dynamic {file: week4.xlsx}",
+      "tokens": 180,
+      "elapsed_ms": 600,
       "done": false
     }
   },
@@ -58,10 +58,23 @@
       "race_id": "race_fixture",
       "side": "baseline",
       "step": 3,
-      "label": "Synthetic fixture step 3",
-      "tokens": 3600,
-      "elapsed_ms": 6000.0,
+      "label": "guess rename map",
+      "tokens": 3522,
+      "elapsed_ms": 6840,
       "done": false
+    }
+  },
+  {
+    "type": "race_step",
+    "ts": "2026-09-26T14:30:00Z",
+    "data": {
+      "race_id": "race_fixture",
+      "side": "tool",
+      "step": 3,
+      "label": "sandbox run: dashboard.html (214 rows)",
+      "tokens": 520,
+      "elapsed_ms": 1100,
+      "done": true
     }
   },
   {
@@ -71,9 +84,9 @@
       "race_id": "race_fixture",
       "side": "baseline",
       "step": 4,
-      "label": "Synthetic fixture step 4",
-      "tokens": 4800,
-      "elapsed_ms": 8000.0,
+      "label": "rename columns",
+      "tokens": 4770,
+      "elapsed_ms": 9120,
       "done": false
     }
   },
@@ -84,9 +97,9 @@
       "race_id": "race_fixture",
       "side": "baseline",
       "step": 5,
-      "label": "Synthetic fixture step 5",
-      "tokens": 6000,
-      "elapsed_ms": 10000.0,
+      "label": "drop empty rows",
+      "tokens": 6055,
+      "elapsed_ms": 11400,
       "done": false
     }
   },
@@ -97,9 +110,9 @@
       "race_id": "race_fixture",
       "side": "baseline",
       "step": 6,
-      "label": "Synthetic fixture step 6",
-      "tokens": 7200,
-      "elapsed_ms": 12000.0,
+      "label": "cast types",
+      "tokens": 7377,
+      "elapsed_ms": 13680,
       "done": false
     }
   },
@@ -110,9 +123,9 @@
       "race_id": "race_fixture",
       "side": "baseline",
       "step": 7,
-      "label": "Synthetic fixture step 7",
-      "tokens": 8400,
-      "elapsed_ms": 14000.0,
+      "label": "retry cast (Amount had '$')",
+      "tokens": 8736,
+      "elapsed_ms": 15960,
       "done": false
     }
   },
@@ -123,9 +136,9 @@
       "race_id": "race_fixture",
       "side": "baseline",
       "step": 8,
-      "label": "Synthetic fixture step 8",
-      "tokens": 9600,
-      "elapsed_ms": 16000.0,
+      "label": "pivot by Region",
+      "tokens": 10132,
+      "elapsed_ms": 18240,
       "done": false
     }
   },
@@ -136,9 +149,9 @@
       "race_id": "race_fixture",
       "side": "baseline",
       "step": 9,
-      "label": "Synthetic fixture step 9",
-      "tokens": 10800,
-      "elapsed_ms": 18000.0,
+      "label": "check totals",
+      "tokens": 11565,
+      "elapsed_ms": 20520,
       "done": false
     }
   },
@@ -149,9 +162,9 @@
       "race_id": "race_fixture",
       "side": "baseline",
       "step": 10,
-      "label": "Synthetic fixture step 10",
-      "tokens": 12000,
-      "elapsed_ms": 20000.0,
+      "label": "choose chart",
+      "tokens": 13035,
+      "elapsed_ms": 22800,
       "done": false
     }
   },
@@ -162,9 +175,9 @@
       "race_id": "race_fixture",
       "side": "baseline",
       "step": 11,
-      "label": "Synthetic fixture step 11",
-      "tokens": 13200,
-      "elapsed_ms": 22000.0,
+      "label": "build bar chart",
+      "tokens": 14142,
+      "elapsed_ms": 25080,
       "done": false
     }
   },
@@ -175,9 +188,9 @@
       "race_id": "race_fixture",
       "side": "baseline",
       "step": 12,
-      "label": "Synthetic fixture step 12",
-      "tokens": 14400,
-      "elapsed_ms": 24000.0,
+      "label": "style chart",
+      "tokens": 15286,
+      "elapsed_ms": 27360,
       "done": false
     }
   },
@@ -188,9 +201,9 @@
       "race_id": "race_fixture",
       "side": "baseline",
       "step": 13,
-      "label": "Synthetic fixture step 13",
-      "tokens": 15600,
-      "elapsed_ms": 26000.0,
+      "label": "write HTML",
+      "tokens": 16467,
+      "elapsed_ms": 29640,
       "done": false
     }
   },
@@ -201,9 +214,9 @@
       "race_id": "race_fixture",
       "side": "baseline",
       "step": 14,
-      "label": "Synthetic fixture step 14",
-      "tokens": 16800,
-      "elapsed_ms": 28000.0,
+      "label": "verify output",
+      "tokens": 17685,
+      "elapsed_ms": 31920,
       "done": false
     }
   },
@@ -214,9 +227,9 @@
       "race_id": "race_fixture",
       "side": "baseline",
       "step": 15,
-      "label": "Synthetic fixture step 15",
-      "tokens": 18000,
-      "elapsed_ms": 30000.0,
+      "label": "done",
+      "tokens": 18940,
+      "elapsed_ms": 34200,
       "done": true
     }
   }

@@ -49,6 +49,12 @@
 }
 
 :root {
+  /* Chart roles (dataviz reference palette, validated light: slots 1-2 pass all checks) */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-muted: #b4b2ab;
+  --viz-grid: #e7e6e2;
+  --viz-axis: #52514e;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -84,6 +90,12 @@
 }
 
 .dark {
+  /* Chart roles, dark steps (validated against #1a1a19) */
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-muted: #6b6a64;
+  --viz-grid: #2e2e2b;
+  --viz-axis: #c3c2b7;
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);

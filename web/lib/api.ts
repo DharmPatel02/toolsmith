@@ -218,12 +218,23 @@ export const api = {
 
   // Concierge + ideas (P3)
   chat: async (message: string, conversationId?: string | null) => {
-    const reply = await post<ChatReply>("/chat", { message, conversation_id: conversationId ?? null }, () => chatReplyMock);
+    const reply = await post<ChatReply>("/chat", { message, conversation_id: conversationId ?? null }, () =>
+      /idea|automate|alert|every (day|morning|week)/i.test(message)
+        ? {
+            conversation_id: "conv_mock",
+            reply: "No tool covers that yet. Here is a spec I could forge; say yes (or press Build) and I'll start.",
+            tool_calls: [{ name: "analyze_idea", arguments: { text: message } }],
+            cards: [{ kind: "idea", idea: { ...ideaNewMock, idea_id: "idea_mock_new" } }],
+          }
+        : chatReplyMock,
+    );
     return { ...reply, cards: (reply.cards ?? []).map(normalizeCard).filter((c): c is ChatCard => c !== null) };
   },
-  analyzeIdea: (text: string, confirm = false) =>
-    post<IdeaAnalysis & { candidate_id?: string }>("/ideas", { text, confirm }, () =>
-      /dashboard|sales|weekly/i.test(text) ? ideaCoveredMock : { ...ideaNewMock, candidate_id: confirm ? "candidate_fixture" : undefined },
+  analyzeIdea: (text: string, confirm = false, ideaId?: string) =>
+    post<IdeaAnalysis>("/ideas", { text, confirm, idea_id: ideaId }, () =>
+      /dashboard|sales|weekly/i.test(text)
+        ? { ...ideaCoveredMock, idea_id: "idea_mock_covered" }
+        : { ...ideaNewMock, idea_id: "idea_mock_new", candidate_id: confirm ? "candidate_fixture" : undefined },
     ),
 
   // Demo controls (P3)

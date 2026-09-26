@@ -4,11 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { CalendarDays, Lightbulb, Send, Wrench } from "lucide-react";
 
 import { PageHeader, Signature, TrustBadge } from "@/components/common";
+import { toast } from "sonner";
+
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/api";
 import { fmtDate, fmtMs, fmtTokens } from "@/lib/format";
-import type { ChatCard } from "@/lib/types";
+import type { ChatCard, IdeaAnalysis } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 interface Message {
@@ -192,30 +194,73 @@ function CardView({ card }: { card: ChatCard }) {
         </div>
       );
     case "idea":
+      return <IdeaCard idea={card.idea} className={shell} />;
+    case "feedback":
       return (
         <div className={shell}>
-          {card.idea.covered_by_tool_id ? (
-            <p>
-              Already covered by{" "}
-              <Link className="underline" href={`/tools/${card.idea.covered_by_tool_id}`}>
-                {card.idea.covered_by_tool_id}
-              </Link>
-              .
-            </p>
-          ) : card.idea.spec ? (
-            <div className="flex flex-col gap-1">
-              <span className="font-medium">
-                Proposed tool: <span className="font-mono">{card.idea.spec.name}()</span>
-              </span>
-              <span className="text-muted-foreground">{card.idea.spec.purpose}</span>
-              <span className="text-xs text-muted-foreground">
-                needs {card.idea.scopes.join(", ") || "no scopes"} · saves ~{card.idea.est_minutes_saved_week} min/week
-              </span>
-            </div>
-          ) : (
-            <p>Not feasible as a tool.</p>
-          )}
+          Feedback saved ({card.feedback.decision}){card.feedback.reason ? `: “${card.feedback.reason}”` : ""}. It feeds the next version and what gets mined.
+        </div>
+      );
+    case "policy":
+      return (
+        <div className={shell}>
+          Approved guardrail change <span className="font-mono">{card.change.field ?? card.change.id}</span>
+          {card.change.value !== undefined && <> → {String(card.change.value)}</>}.
         </div>
       );
   }
+}
+
+function IdeaCard({ idea, className }: { idea: IdeaAnalysis; className: string }) {
+  const [candidateId, setCandidateId] = useState(idea.candidate_id ?? null);
+  const [busy, setBusy] = useState(false);
+  const build = async () => {
+    if (!idea.idea_id) return;
+    setBusy(true);
+    try {
+      const res = await api.analyzeIdea("", true, idea.idea_id);
+      setCandidateId(res.candidate_id ?? null);
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (idea.covered_by_tool_id)
+    return (
+      <div className={className}>
+        Already covered by{" "}
+        <Link className="underline" href={`/tools/${idea.covered_by_tool_id}`}>
+          {idea.covered_by_tool_id}
+        </Link>
+        . Use that tool instead of forging a new one.
+      </div>
+    );
+  if (!idea.spec)
+    return <div className={className}>Not automatable as a tool{idea.reason ? `: ${idea.reason}` : "."}</div>;
+  return (
+    <div className={cn(className, "flex flex-col gap-2")}>
+      <span className="font-medium">
+        Proposed tool: <span className="font-mono">{idea.spec.name}()</span>
+      </span>
+      <span className="text-muted-foreground">{idea.spec.purpose}</span>
+      <div className="flex flex-wrap gap-1.5 text-xs">
+        {Object.keys(idea.spec.params_schema.properties ?? {}).map((p) => (
+          <span key={p} className="rounded bg-muted px-1.5 py-0.5 font-mono">{p}</span>
+        ))}
+      </div>
+      <span className="text-xs text-muted-foreground">
+        needs {idea.scopes.join(", ") || "no scopes"} · {idea.deps.join(", ") || "stdlib only"} · saves ~{idea.est_minutes_saved_week} min/week
+      </span>
+      {candidateId ? (
+        <Link href={`/candidates/${candidateId}`} className="text-xs underline">
+          Forging: follow candidate {candidateId}
+        </Link>
+      ) : (
+        <Button size="sm" className="self-start" disabled={busy || !idea.idea_id} onClick={build}>
+          Build it
+        </Button>
+      )}
+    </div>
+  );
 }

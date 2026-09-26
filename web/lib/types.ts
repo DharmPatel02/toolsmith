@@ -203,8 +203,9 @@ export interface Metrics {
   capture_quality: Record<string, number>;
   cost_to_observe_usd_day: number;
   race: Record<string, Record<string, number>>;
-  // Optional time series (P1 may add; charts fall back to single values).
-  series?: Record<string, { label: string; value: number; [k: string]: string | number }[]>;
+  detection?: Record<string, number>; // precision, recall, f1
+  repair_loops?: number;
+  toolbox_size_over_time?: Record<string, string | number>[]; // e.g. {date, size}
 }
 
 export type ChatCard =
@@ -213,7 +214,9 @@ export type ChatCard =
   | { kind: "episodes"; episodes: EpisodeHit[] }
   | { kind: "run"; run: RunResult }
   | { kind: "idea"; idea: IdeaAnalysis }
-  | { kind: "tool_hits"; hits: { tool_id: string; name: string; score: number }[] };
+  | { kind: "tool_hits"; hits: { tool_id: string; name: string; score: number }[] }
+  | { kind: "feedback"; feedback: { tool_id?: string; pattern_id?: string; decision: string; reason?: string } }
+  | { kind: "policy"; change: { id: string; field?: string; value?: unknown } };
 
 export interface ChatReply {
   conversation_id: string;
@@ -229,6 +232,12 @@ export interface IdeaAnalysis {
   deps: string[];
   est_minutes_saved_week: number;
   spec: ToolSpec | null;
+  // P3 additions from POST /ideas
+  idea_id?: string;
+  candidate_id?: string;
+  related_tool_id?: string;
+  reason?: string;
+  title?: string;
 }
 
 export interface CaptureState {

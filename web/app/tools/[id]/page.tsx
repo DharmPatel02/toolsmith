@@ -3,7 +3,8 @@ import { useParams } from "next/navigation";
 import { toast } from "sonner";
 
 import { ErrorState, ExecutionPathBadge, Loading, PageHeader, Stat, TrustBadge } from "@/components/common";
-import { RunPanel } from "@/components/run-panel";
+import { RaceView } from "@/components/race-view";
+import { ARTIFACT_FILES, RunPanel } from "@/components/run-panel";
 import { CodeViewer, Markdown, ParamsTable, RequiresList } from "@/components/tool-doc";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -77,6 +78,14 @@ export default function ToolPage() {
             </CardHeader>
             <CardContent>
               <RunPanel toolId={id} schema={v.params_schema} baseline={{ minutes: 9, tokens: tokensBefore }} />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Race</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <RaceView intent={`make this week's ${t.title.toLowerCase()}`} inputs={{ file: ARTIFACT_FILES.at(-1) }} />
             </CardContent>
           </Card>
           <Card>

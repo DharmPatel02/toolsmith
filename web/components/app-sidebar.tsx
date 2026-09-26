@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useSyncExternalStore } from "react";
-import { Hammer, Lightbulb, MessageSquare, Moon, ShieldCheck, Sun } from "lucide-react";
+import { Hammer, Lightbulb, MessageSquare, Moon, Radio, ShieldCheck, SlidersHorizontal, Sun } from "lucide-react";
 
 import { Switch } from "@/components/ui/switch";
 import { setUseMocks, isMockMode } from "@/lib/api";
@@ -15,6 +15,8 @@ const NAV = [
   { href: "/suggestions", label: "Suggestions", icon: Lightbulb },
   { href: "/chat", label: "Chat", icon: MessageSquare },
   { href: "/policy", label: "Policy & metrics", icon: ShieldCheck },
+  { href: "/capture", label: "Capture & privacy", icon: Radio },
+  { href: "/demo", label: "Demo controls", icon: SlidersHorizontal },
 ];
 
 const noopSubscribe = () => () => {};

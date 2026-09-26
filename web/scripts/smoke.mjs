@@ -3,7 +3,7 @@
 import { chromium } from "playwright";
 
 const base = process.argv[2] ?? "http://localhost:3000";
-const pages = ["/", "/suggestions", "/chat", "/policy", "/tools/tool_uc1", "/candidates/candidate_fixture"];
+const pages = ["/", "/suggestions", "/chat", "/policy", "/capture", "/demo", "/tools/tool_uc1", "/candidates/candidate_fixture"];
 const browser = await chromium.launch();
 const page = await browser.newPage();
 const problems = [];
@@ -32,7 +32,7 @@ await check("P3.1.4 accept → P3.2.1 stepper reaches passed", async () => {
   await page.goto(base + "/suggestions");
   await page.getByRole("button", { name: "Accept" }).click();
   await page.getByText("Gate passed").waitFor(t);
-  await page.getByRole("button", { name: "Approve" }).waitFor(t);
+  await page.getByRole("button", { name: "Approve", exact: true }).waitFor(t);
 });
 await check("P3.1.4 decline with never-for scope", async () => {
   await page.goto(base + "/suggestions");
@@ -59,6 +59,46 @@ await check("P3.2.3 chat renders reply cards", async () => {
   await page.goto(base + "/chat");
   await page.getByRole("button", { name: /Why did you suggest/ }).click();
   await page.getByText("Recalled episodes").waitFor(t);
+});
+await check("P3.3.7 race streams both sides and freezes on final numbers", async () => {
+  await page.goto(base + "/tools/tool_uc1");
+  await page.getByRole("button", { name: /Race: agent from scratch/ }).click();
+  await page.getByText(/^Final:/).waitFor({ timeout: 20000 });
+});
+await check("P3.3.2 metrics page renders charts", async () => {
+  await page.goto(base + "/policy");
+  await page.getByText("Logs only vs logs + screen").waitFor(t);
+  await page.waitForTimeout(800);
+  const bars = await page.locator(".recharts-bar-rectangle").count();
+  if (bars < 4) throw new Error(`expected bars, got ${bars}`);
+  await page.getByRole("button", { name: "Table" }).first().click();
+  await page.getByRole("cell", { name: "Workflows found" }).waitFor(t);
+});
+await check("P3.3.1 policy strip shows because + approves pending change", async () => {
+  await page.goto(base + "/");
+  await page.getByText(/because/).first().waitFor(t);
+  await page.getByRole("button", { name: /^Approve/ }).first().click();
+  await page.getByText("Change approved").waitFor(t);
+});
+await check("P3.3.3 demo: switch v2 -> heal timeline with time to heal", async () => {
+  await page.goto(base + "/demo");
+  await page.getByRole("button", { name: "Switch to v2" }).click();
+  await page.getByText(/time to heal/).waitFor({ timeout: 15000 });
+  await page.getByRole("button", { name: "Run prune" }).click();
+  await page.getByText(/Prune ran/).waitFor(t);
+});
+await check("P3.3.6 capture: pause flips state, audit list renders", async () => {
+  await page.goto(base + "/capture");
+  await page.getByRole("button", { name: "Pause" }).click();
+  await page.getByRole("button", { name: "Resume" }).waitFor(t);
+  await page.getByRole("button", { name: "Resume" }).click();
+  await page.getByText("Capture audit").waitFor(t);
+});
+await check("P4.2.4 chat idea -> Build it -> candidate link", async () => {
+  await page.goto(base + "/chat");
+  await page.getByRole("button", { name: /I have an idea/ }).click();
+  await page.getByRole("button", { name: "Build it" }).click();
+  await page.getByText(/Forging: follow candidate/).waitFor(t);
 });
 await browser.close();
 if (problems.length) {

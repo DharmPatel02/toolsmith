@@ -1,42 +1,74 @@
 {
-  "minutes_saved_week": 0,
+  "minutes_saved_week": 47.5,
   "tokens": {
-    "before": 0,
-    "after": 0
+    "before": 18000,
+    "after": 520
   },
-  "break_even_runs": null,
-  "replay_pass_rate": 0,
-  "time_to_heal_seconds": null,
-  "decoy_false_positive_rate": 0,
-  "toolbox_count": 1,
+  "break_even_runs": 2.4,
+  "replay_pass_rate": 0.92,
+  "time_to_heal_seconds": 38.0,
+  "decoy_false_positive_rate": 0.0,
+  "toolbox_count": 5,
   "ablation": {
     "logs_only": {
-      "workflows": 0,
-      "false_suggestions": 0
+      "workflows": 1,
+      "false_suggestions": 1
     },
     "logs_plus_screen": {
-      "workflows": 0,
+      "workflows": 3,
       "false_suggestions": 0
     }
   },
   "capture_quality": {
-    "step_recall": 0,
-    "signature_precision": 0,
-    "boundary_ok": 0,
-    "pattern_recall": 0,
-    "noise": 0
+    "step_recall": 0.86,
+    "signature_precision": 0.91,
+    "boundary_ok": 0.83,
+    "pattern_recall": 1.0,
+    "noise": 0.07
   },
-  "cost_to_observe_usd_day": 0,
+  "cost_to_observe_usd_day": 0.42,
   "race": {
     "baseline": {
       "steps": 15,
-      "seconds": 30,
-      "tokens": 18000
+      "seconds": 34.2,
+      "tokens": 18400
     },
     "tool": {
       "steps": 2,
-      "seconds": 1,
-      "tokens": 500
+      "seconds": 1.1,
+      "tokens": 520
     }
-  }
+  },
+  "detection": {
+    "precision": 0.9,
+    "recall": 0.83,
+    "f1": 0.86
+  },
+  "repair_loops": 1,
+  "toolbox_size_over_time": [
+    {
+      "date": "2026-09-07",
+      "size": 0
+    },
+    {
+      "date": "2026-09-14",
+      "size": 1
+    },
+    {
+      "date": "2026-09-21",
+      "size": 3
+    },
+    {
+      "date": "2026-09-24",
+      "size": 6
+    },
+    {
+      "date": "2026-09-25",
+      "size": 4
+    },
+    {
+      "date": "2026-09-26",
+      "size": 5
+    }
+  ]
 }
