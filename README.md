@@ -37,6 +37,7 @@ flowchart LR
   RT --> RUNS[(runs)] --> TRUST[Trust · drift · prune] --> POL[(policy)]
   POL --> MIN
 ```
+![ToolSmith Hackathon System Design](toolsmith_system_design.svg)
 
 Every arrow is a MongoDB collection or a change stream. **Atlas is both the control plane and the event bus**: work is queued in a `jobs` collection and picked up by the worker through change streams. There is no Kafka, Redis or Celery.
 

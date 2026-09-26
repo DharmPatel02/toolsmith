@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">ToolSmith Hackathon System Design</title>
+  <desc id="desc">System design diagram placeholder for ToolSmith hackathon architecture.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#1e293b" />
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#bg)" />
+  <rect x="120" y="120" width="1360" height="660" rx="24" fill="#0b1220" stroke="#334155" stroke-width="2" />
+  <text x="800" y="320" fill="#e2e8f0" font-family="Inter, Arial, sans-serif" font-size="64" text-anchor="middle">
+    ToolSmith Hackathon System Design
+  </text>
+  <text x="800" y="420" fill="#94a3b8" font-family="Inter, Arial, sans-serif" font-size="32" text-anchor="middle">
+    (SVG added to README as requested)
+  </text>
+</svg>
