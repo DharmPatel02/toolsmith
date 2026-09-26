@@ -1,0 +1,278 @@
+[
+  {
+    "_id": "file.open",
+    "status": "active",
+    "aliases": [],
+    "embedding": [],
+    "seen": 3,
+    "first_seen": "2026-09-26T14:30:00Z",
+    "example_frames": []
+  },
+  {
+    "_id": "file.save",
+    "status": "active",
+    "aliases": [],
+    "embedding": [],
+    "seen": 3,
+    "first_seen": "2026-09-26T14:30:00Z",
+    "example_frames": []
+  },
+  {
+    "_id": "file.download",
+    "status": "active",
+    "aliases": [],
+    "embedding": [],
+    "seen": 3,
+    "first_seen": "2026-09-26T14:30:00Z",
+    "example_frames": []
+  },
+  {
+    "_id": "file.upload",
+    "status": "active",
+    "aliases": [],
+    "embedding": [],
+    "seen": 3,
+    "first_seen": "2026-09-26T14:30:00Z",
+    "example_frames": []
+  },
+  {
+    "_id": "file.copy",
+    "status": "active",
+    "aliases": [],
+    "embedding": [],
+    "seen": 3,
+    "first_seen": "2026-09-26T14:30:00Z",
+    "example_frames": []
+  },
+  {
+    "_id": "table.rename",
+    "status": "active",
+    "aliases": [
+      "rename columns"
+    ],
+    "embedding": [],
+    "seen": 3,
+    "first_seen": "2026-09-26T14:30:00Z",
+    "example_frames": []
+  },
+  {
+    "_id": "table.dropna",
+    "status": "active",
+    "aliases": [],
+    "embedding": [],
+    "seen": 3,
+    "first_seen": "2026-09-26T14:30:00Z",
+    "example_frames": []
+  },
+  {
+    "_id": "table.cast",
+    "status": "active",
+    "aliases": [],
+    "embedding": [],
+    "seen": 3,
+    "first_seen": "2026-09-26T14:30:00Z",
+    "example_frames": []
+  },
+  {
+    "_id": "table.pivot",
+    "status": "active",
+    "aliases": [
+      "insert pivottable",
+      "make pivot",
+      "pivot_table"
+    ],
+    "embedding": [],
+    "seen": 3,
+    "first_seen": "2026-09-26T14:30:00Z",
+    "example_frames": []
+  },
+  {
+    "_id": "table.filter",
+    "status": "active",
+    "aliases": [],
+    "embedding": [],
+    "seen": 3,
+    "first_seen": "2026-09-26T14:30:00Z",
+    "example_frames": []
+  },
+  {
+    "_id": "table.join",
+    "status": "active",
+    "aliases": [],
+    "embedding": [],
+    "seen": 3,
+    "first_seen": "2026-09-26T14:30:00Z",
+    "example_frames": []
+  },
+  {
+    "_id": "table.sort",
+    "status": "active",
+    "aliases": [],
+    "embedding": [],
+    "seen": 3,
+    "first_seen": "2026-09-26T14:30:00Z",
+    "example_frames": []
+  },
+  {
+    "_id": "table.groupby",
+    "status": "active",
+    "aliases": [],
+    "embedding": [],
+    "seen": 3,
+    "first_seen": "2026-09-26T14:30:00Z",
+    "example_frames": []
+  },
+  {
+    "_id": "table.dedupe",
+    "status": "active",
+    "aliases": [],
+    "embedding": [],
+    "seen": 3,
+    "first_seen": "2026-09-26T14:30:00Z",
+    "example_frames": []
+  },
+  {
+    "_id": "table.aggregate",
+    "status": "active",
+    "aliases": [],
+    "embedding": [],
+    "seen": 3,
+    "first_seen": "2026-09-26T14:30:00Z",
+    "example_frames": []
+  },
+  {
+    "_id": "table.select",
+    "status": "active",
+    "aliases": [],
+    "embedding": [],
+    "seen": 3,
+    "first_seen": "2026-09-26T14:30:00Z",
+    "example_frames": []
+  },
+  {
+    "_id": "chart.bar",
+    "status": "active",
+    "aliases": [],
+    "embedding": [],
+    "seen": 3,
+    "first_seen": "2026-09-26T14:30:00Z",
+    "example_frames": []
+  },
+  {
+    "_id": "chart.line",
+    "status": "active",
+    "aliases": [],
+    "embedding": [],
+    "seen": 3,
+    "first_seen": "2026-09-26T14:30:00Z",
+    "example_frames": []
+  },
+  {
+    "_id": "chart.scatter",
+    "status": "active",
+    "aliases": [],
+    "embedding": [],
+    "seen": 3,
+    "first_seen": "2026-09-26T14:30:00Z",
+    "example_frames": []
+  },
+  {
+    "_id": "web.navigate",
+    "status": "active",
+    "aliases": [],
+    "embedding": [],
+    "seen": 3,
+    "first_seen": "2026-09-26T14:30:00Z",
+    "example_frames": []
+  },
+  {
+    "_id": "web.fetch",
+    "status": "active",
+    "aliases": [],
+    "embedding": [],
+    "seen": 3,
+    "first_seen": "2026-09-26T14:30:00Z",
+    "example_frames": []
+  },
+  {
+    "_id": "web.extract",
+    "status": "active",
+    "aliases": [],
+    "embedding": [],
+    "seen": 3,
+    "first_seen": "2026-09-26T14:30:00Z",
+    "example_frames": []
+  },
+  {
+    "_id": "web.submit",
+    "status": "active",
+    "aliases": [],
+    "embedding": [],
+    "seen": 3,
+    "first_seen": "2026-09-26T14:30:00Z",
+    "example_frames": []
+  },
+  {
+    "_id": "web.click",
+    "status": "active",
+    "aliases": [],
+    "embedding": [],
+    "seen": 3,
+    "first_seen": "2026-09-26T14:30:00Z",
+    "example_frames": []
+  },
+  {
+    "_id": "doc.read",
+    "status": "active",
+    "aliases": [],
+    "embedding": [],
+    "seen": 3,
+    "first_seen": "2026-09-26T14:30:00Z",
+    "example_frames": []
+  },
+  {
+    "_id": "doc.extract",
+    "status": "active",
+    "aliases": [],
+    "embedding": [],
+    "seen": 3,
+    "first_seen": "2026-09-26T14:30:00Z",
+    "example_frames": []
+  },
+  {
+    "_id": "export.html",
+    "status": "active",
+    "aliases": [],
+    "embedding": [],
+    "seen": 3,
+    "first_seen": "2026-09-26T14:30:00Z",
+    "example_frames": []
+  },
+  {
+    "_id": "export.pdf",
+    "status": "active",
+    "aliases": [],
+    "embedding": [],
+    "seen": 3,
+    "first_seen": "2026-09-26T14:30:00Z",
+    "example_frames": []
+  },
+  {
+    "_id": "export.csv",
+    "status": "active",
+    "aliases": [],
+    "embedding": [],
+    "seen": 3,
+    "first_seen": "2026-09-26T14:30:00Z",
+    "example_frames": []
+  },
+  {
+    "_id": "msg.send",
+    "status": "active",
+    "aliases": [],
+    "embedding": [],
+    "seen": 3,
+    "first_seen": "2026-09-26T14:30:00Z",
+    "example_frames": []
+  }
+]

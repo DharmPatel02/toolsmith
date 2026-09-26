@@ -1,0 +1,48 @@
+{
+  "episodes": [
+    {
+      "session_id": "s_w1_mon",
+      "date": "2026-09-07T13:00:00Z",
+      "intent_summary": "Build weekly sales dashboard",
+      "minutes": 9,
+      "tokens": 18000,
+      "score": 0.95
+    },
+    {
+      "session_id": "s_w2_mon",
+      "date": "2026-09-14T13:00:00Z",
+      "intent_summary": "Build weekly sales dashboard",
+      "minutes": 9,
+      "tokens": 18000,
+      "score": 0.95
+    },
+    {
+      "session_id": "s_w3_mon",
+      "date": "2026-09-21T13:00:00Z",
+      "intent_summary": "Build weekly sales dashboard",
+      "minutes": 9,
+      "tokens": 18000,
+      "score": 0.95
+    }
+  ],
+  "frames": [
+    {
+      "frame_id": "f_w1_pivot",
+      "ts": "2026-09-07T13:00:00Z",
+      "thumb_url": "/frames/f_w1_pivot/thumb",
+      "verb": "table.pivot"
+    },
+    {
+      "frame_id": "f_w2_pivot",
+      "ts": "2026-09-14T13:00:00Z",
+      "thumb_url": "/frames/f_w2_pivot/thumb",
+      "verb": "table.pivot"
+    },
+    {
+      "frame_id": "f_w3_pivot",
+      "ts": "2026-09-21T13:00:00Z",
+      "thumb_url": "/frames/f_w3_pivot/thumb",
+      "verb": "table.pivot"
+    }
+  ]
+}
