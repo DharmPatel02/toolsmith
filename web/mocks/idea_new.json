@@ -1,0 +1,56 @@
+{
+  "covered_by_tool_id": null,
+  "feasible": true,
+  "scopes": [
+    "net:localhost:8081",
+    "write:outputs"
+  ],
+  "deps": [
+    "bs4",
+    "pandas"
+  ],
+  "est_minutes_saved_week": 15,
+  "spec": {
+    "name": "daily_stock_alert",
+    "purpose": "Flag products with fewer than 5 units in stock",
+    "params_schema": {
+      "type": "object",
+      "properties": {
+        "file": {
+          "type": "string"
+        },
+        "week": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "file",
+        "week"
+      ],
+      "additionalProperties": false
+    },
+    "outputs": {
+      "dashboard": "html"
+    },
+    "requires": {
+      "scopes": [
+        "write:outputs"
+      ],
+      "deps": [
+        "pandas",
+        "openpyxl",
+        "plotly"
+      ],
+      "tools": []
+    },
+    "keywords": [
+      "stock",
+      "alert"
+    ],
+    "derivation": {
+      "observed_tier": "T2",
+      "execution_path": "api"
+    },
+    "not_automatable": null
+  }
+}

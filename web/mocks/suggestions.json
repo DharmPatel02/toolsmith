@@ -1,0 +1,30 @@
+[
+  {
+    "pattern_id": "pat_uc1",
+    "title": "Weekly sales dashboard from Monday xlsx",
+    "reason": "You built this dashboard every Monday for 3 weeks, about 9 minutes each.",
+    "support": 3,
+    "distinct_days": 3,
+    "est_minutes_saved_week": 9,
+    "value": 22.4,
+    "signature": [
+      "file.open:xlsx",
+      "table.rename:cols",
+      "table.dropna",
+      "table.cast",
+      "table.pivot:2col",
+      "chart.bar",
+      "export.html"
+    ],
+    "dynamic_params": [
+      {
+        "name": "file",
+        "type": "file"
+      },
+      {
+        "name": "week",
+        "type": "string"
+      }
+    ]
+  }
+]

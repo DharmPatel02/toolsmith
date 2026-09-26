@@ -1,0 +1,80 @@
+[
+  {
+    "type": "forge_started",
+    "ts": "2026-09-26T14:30:00Z",
+    "data": {
+      "pattern_id": "pat_uc1",
+      "candidate_id": "candidate_fixture",
+      "stage": "spec"
+    }
+  },
+  {
+    "type": "forged",
+    "ts": "2026-09-26T14:30:02Z",
+    "data": {
+      "candidate_id": "candidate_fixture",
+      "stage": "code"
+    }
+  },
+  {
+    "type": "forged",
+    "ts": "2026-09-26T14:30:03Z",
+    "data": {
+      "candidate_id": "candidate_fixture",
+      "stage": "tests"
+    }
+  },
+  {
+    "type": "gate_passed",
+    "ts": "2026-09-26T14:30:05Z",
+    "data": {
+      "candidate_id": "candidate_fixture",
+      "stage": "replay",
+      "checks": {
+        "unit": true,
+        "replay": true,
+        "side_effects": true,
+        "dedupe": true
+      }
+    }
+  },
+  {
+    "type": "policy_changed",
+    "ts": "2026-09-26T14:30:07Z",
+    "data": {
+      "id": "chg_1",
+      "field": "thresholds.min_support",
+      "from": 3,
+      "to": 4,
+      "direction": "tighten",
+      "because": "3 of the last 4 tools were pruned",
+      "status": "applied"
+    }
+  },
+  {
+    "type": "policy_changed",
+    "ts": "2026-09-26T14:30:08Z",
+    "data": {
+      "id": "chg_2",
+      "field": "thresholds.T_high",
+      "from": 0.82,
+      "to": 0.78,
+      "direction": "loosen",
+      "because": "12 found-routes in a row were accepted without edits",
+      "status": "pending"
+    }
+  },
+  {
+    "type": "pruned",
+    "ts": "2026-09-26T14:30:09Z",
+    "data": {
+      "tool_id": "tool_csv",
+      "kept": [
+        {
+          "tool_id": "tool_extract",
+          "because": "replicate_method depends on it"
+        }
+      ]
+    }
+  }
+]

@@ -1,0 +1,30 @@
+{
+  "_id": "policy:u_1",
+  "version": 1,
+  "thresholds": {
+    "min_support": 3,
+    "min_distinct_days": 2,
+    "max_variance": 0.35,
+    "max_burstiness": 0.8,
+    "merge_similarity": 0.9,
+    "T_high": 0.82,
+    "T_low": 0.65,
+    "max_suggestions_per_day": 3,
+    "cooldown_days": [
+      7,
+      14,
+      30
+    ],
+    "promote": {
+      "dry_run_confirms": 3,
+      "success_streak": 8,
+      "max_edit_rate": 0.1
+    },
+    "prune": {
+      "min_runs_30d": 2,
+      "min_success_rate": 0.6
+    }
+  },
+  "rules": [],
+  "changes": []
+}

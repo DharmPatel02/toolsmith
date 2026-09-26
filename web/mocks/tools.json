@@ -1,0 +1,57 @@
+[
+  {
+    "tool_id": "tool_uc1",
+    "name": "weekly_sales_rollup",
+    "title": "Weekly sales dashboard",
+    "status": "active",
+    "trust": "dry_run",
+    "runs": 0,
+    "success_rate": 0,
+    "p50_ms": 0,
+    "minutes_saved": 0
+  },
+  {
+    "tool_id": "tool_uc3",
+    "name": "competitor_price_sweep",
+    "title": "Competitor price sweep",
+    "status": "active",
+    "trust": "supervised",
+    "runs": 14,
+    "success_rate": 0.93,
+    "p50_ms": 1800,
+    "minutes_saved": 84
+  },
+  {
+    "tool_id": "tool_invoice",
+    "name": "monthly_variance_audit",
+    "title": "Monthly variance audit",
+    "status": "active",
+    "trust": "autonomous",
+    "runs": 22,
+    "success_rate": 1.0,
+    "p50_ms": 950,
+    "minutes_saved": 176
+  },
+  {
+    "tool_id": "tool_extract",
+    "name": "extract_method",
+    "title": "Extract method from paper",
+    "status": "active",
+    "trust": "dry_run",
+    "runs": 3,
+    "success_rate": 0.67,
+    "p50_ms": 4200,
+    "minutes_saved": 24
+  },
+  {
+    "tool_id": "tool_csv",
+    "name": "csv_title_case",
+    "title": "Title-case CSV headers",
+    "status": "active",
+    "trust": "supervised",
+    "runs": 2,
+    "success_rate": 0.5,
+    "p50_ms": 300,
+    "minutes_saved": 2
+  }
+]

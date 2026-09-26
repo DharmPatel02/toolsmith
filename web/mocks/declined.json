@@ -1,0 +1,32 @@
+[
+  {
+    "pattern_id": "pat_decoy_a",
+    "title": "Rename screenshots in Downloads",
+    "reason": "12 repeats, all on one afternoon",
+    "support": 12,
+    "distinct_days": 1,
+    "est_minutes_saved_week": 1,
+    "value": 0.4,
+    "signature": [
+      "file.rename"
+    ],
+    "dynamic_params": [],
+    "declined_reason": "One-day burst: 12 repeats on a single day (min_distinct_days = 2)"
+  },
+  {
+    "pattern_id": "pat_decoy_b",
+    "title": "Ad-hoc SQL exploration",
+    "reason": "4 sessions, different steps each time",
+    "support": 4,
+    "distinct_days": 4,
+    "est_minutes_saved_week": 6,
+    "value": 1.1,
+    "signature": [
+      "db.query",
+      "table.filter",
+      "chart.line"
+    ],
+    "dynamic_params": [],
+    "declined_reason": "High variance: steps differ too much between runs (0.61 > max_variance 0.35)"
+  }
+]

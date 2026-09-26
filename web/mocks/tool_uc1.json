@@ -1,0 +1,63 @@
+{
+  "tool_id": "tool_uc1",
+  "name": "weekly_sales_rollup",
+  "title": "Weekly sales dashboard",
+  "status": "active",
+  "trust": "dry_run",
+  "runs": 0,
+  "success_rate": 0,
+  "p50_ms": 0,
+  "minutes_saved": 0,
+  "user_id": "u_1",
+  "tier": "lean",
+  "active_version": 1,
+  "lineage": {
+    "calls": [],
+    "parents": [],
+    "merged_from": [],
+    "merged_into": null
+  },
+  "version": {
+    "tool_id": "tool_uc1",
+    "version": 1,
+    "code": "def run(ctx, **params):\n    return {\"summary\": \"Phase 0 fixture; no execution\"}\n",
+    "params_schema": {
+      "type": "object",
+      "properties": {
+        "file": {
+          "type": "string"
+        },
+        "week": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "file",
+        "week"
+      ],
+      "additionalProperties": false
+    },
+    "tests": "# Phase 0 fixture; replay tests supplied by P2.",
+    "fixtures_ref": [],
+    "tutorial_md": "# Weekly sales dashboard\n\n## Purpose\nPreview a weekly sales dashboard.\n\n## Inputs\nAn xlsx file and week.\n\n## Outputs\nDashboard HTML.\n\n## Permissions\nWrites only approved outputs.\n\n## Example\nUse sales_w1.xlsx for week 1.",
+    "requires": {
+      "scopes": [
+        "write:outputs"
+      ],
+      "deps": [
+        "pandas",
+        "openpyxl",
+        "plotly"
+      ],
+      "tools": []
+    },
+    "derivation": {
+      "observed_tier": "T2",
+      "execution_path": "api"
+    },
+    "created_from": {
+      "pattern_id": "pat_uc1"
+    },
+    "approved_at": null
+  }
+}

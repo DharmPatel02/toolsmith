@@ -1,0 +1,223 @@
+[
+  {
+    "type": "race_step",
+    "ts": "2026-09-26T14:30:00Z",
+    "data": {
+      "race_id": "race_fixture",
+      "side": "tool",
+      "step": 1,
+      "label": "Synthetic fixture step 1",
+      "tokens": 250,
+      "elapsed_ms": 500.0,
+      "done": false
+    }
+  },
+  {
+    "type": "race_step",
+    "ts": "2026-09-26T14:30:00Z",
+    "data": {
+      "race_id": "race_fixture",
+      "side": "tool",
+      "step": 2,
+      "label": "Synthetic fixture step 2",
+      "tokens": 500,
+      "elapsed_ms": 1000.0,
+      "done": true
+    }
+  },
+  {
+    "type": "race_step",
+    "ts": "2026-09-26T14:30:00Z",
+    "data": {
+      "race_id": "race_fixture",
+      "side": "baseline",
+      "step": 1,
+      "label": "Synthetic fixture step 1",
+      "tokens": 1200,
+      "elapsed_ms": 2000.0,
+      "done": false
+    }
+  },
+  {
+    "type": "race_step",
+    "ts": "2026-09-26T14:30:00Z",
+    "data": {
+      "race_id": "race_fixture",
+      "side": "baseline",
+      "step": 2,
+      "label": "Synthetic fixture step 2",
+      "tokens": 2400,
+      "elapsed_ms": 4000.0,
+      "done": false
+    }
+  },
+  {
+    "type": "race_step",
+    "ts": "2026-09-26T14:30:00Z",
+    "data": {
+      "race_id": "race_fixture",
+      "side": "baseline",
+      "step": 3,
+      "label": "Synthetic fixture step 3",
+      "tokens": 3600,
+      "elapsed_ms": 6000.0,
+      "done": false
+    }
+  },
+  {
+    "type": "race_step",
+    "ts": "2026-09-26T14:30:00Z",
+    "data": {
+      "race_id": "race_fixture",
+      "side": "baseline",
+      "step": 4,
+      "label": "Synthetic fixture step 4",
+      "tokens": 4800,
+      "elapsed_ms": 8000.0,
+      "done": false
+    }
+  },
+  {
+    "type": "race_step",
+    "ts": "2026-09-26T14:30:00Z",
+    "data": {
+      "race_id": "race_fixture",
+      "side": "baseline",
+      "step": 5,
+      "label": "Synthetic fixture step 5",
+      "tokens": 6000,
+      "elapsed_ms": 10000.0,
+      "done": false
+    }
+  },
+  {
+    "type": "race_step",
+    "ts": "2026-09-26T14:30:00Z",
+    "data": {
+      "race_id": "race_fixture",
+      "side": "baseline",
+      "step": 6,
+      "label": "Synthetic fixture step 6",
+      "tokens": 7200,
+      "elapsed_ms": 12000.0,
+      "done": false
+    }
+  },
+  {
+    "type": "race_step",
+    "ts": "2026-09-26T14:30:00Z",
+    "data": {
+      "race_id": "race_fixture",
+      "side": "baseline",
+      "step": 7,
+      "label": "Synthetic fixture step 7",
+      "tokens": 8400,
+      "elapsed_ms": 14000.0,
+      "done": false
+    }
+  },
+  {
+    "type": "race_step",
+    "ts": "2026-09-26T14:30:00Z",
+    "data": {
+      "race_id": "race_fixture",
+      "side": "baseline",
+      "step": 8,
+      "label": "Synthetic fixture step 8",
+      "tokens": 9600,
+      "elapsed_ms": 16000.0,
+      "done": false
+    }
+  },
+  {
+    "type": "race_step",
+    "ts": "2026-09-26T14:30:00Z",
+    "data": {
+      "race_id": "race_fixture",
+      "side": "baseline",
+      "step": 9,
+      "label": "Synthetic fixture step 9",
+      "tokens": 10800,
+      "elapsed_ms": 18000.0,
+      "done": false
+    }
+  },
+  {
+    "type": "race_step",
+    "ts": "2026-09-26T14:30:00Z",
+    "data": {
+      "race_id": "race_fixture",
+      "side": "baseline",
+      "step": 10,
+      "label": "Synthetic fixture step 10",
+      "tokens": 12000,
+      "elapsed_ms": 20000.0,
+      "done": false
+    }
+  },
+  {
+    "type": "race_step",
+    "ts": "2026-09-26T14:30:00Z",
+    "data": {
+      "race_id": "race_fixture",
+      "side": "baseline",
+      "step": 11,
+      "label": "Synthetic fixture step 11",
+      "tokens": 13200,
+      "elapsed_ms": 22000.0,
+      "done": false
+    }
+  },
+  {
+    "type": "race_step",
+    "ts": "2026-09-26T14:30:00Z",
+    "data": {
+      "race_id": "race_fixture",
+      "side": "baseline",
+      "step": 12,
+      "label": "Synthetic fixture step 12",
+      "tokens": 14400,
+      "elapsed_ms": 24000.0,
+      "done": false
+    }
+  },
+  {
+    "type": "race_step",
+    "ts": "2026-09-26T14:30:00Z",
+    "data": {
+      "race_id": "race_fixture",
+      "side": "baseline",
+      "step": 13,
+      "label": "Synthetic fixture step 13",
+      "tokens": 15600,
+      "elapsed_ms": 26000.0,
+      "done": false
+    }
+  },
+  {
+    "type": "race_step",
+    "ts": "2026-09-26T14:30:00Z",
+    "data": {
+      "race_id": "race_fixture",
+      "side": "baseline",
+      "step": 14,
+      "label": "Synthetic fixture step 14",
+      "tokens": 16800,
+      "elapsed_ms": 28000.0,
+      "done": false
+    }
+  },
+  {
+    "type": "race_step",
+    "ts": "2026-09-26T14:30:00Z",
+    "data": {
+      "race_id": "race_fixture",
+      "side": "baseline",
+      "step": 15,
+      "label": "Synthetic fixture step 15",
+      "tokens": 18000,
+      "elapsed_ms": 30000.0,
+      "done": true
+    }
+  }
+]

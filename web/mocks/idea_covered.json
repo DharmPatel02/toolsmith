@@ -1,0 +1,14 @@
+{
+  "covered_by_tool_id": "tool_uc1",
+  "feasible": true,
+  "scopes": [
+    "write:outputs"
+  ],
+  "deps": [
+    "pandas",
+    "openpyxl",
+    "plotly"
+  ],
+  "est_minutes_saved_week": 9,
+  "spec": null
+}

@@ -1,0 +1,88 @@
+{
+  "conversation_id": "conv_mock",
+  "reply": "I suggested the weekly sales dashboard because you built it on three Mondays in a row (7, 14 and 21 Sep), about 9 minutes and 18k tokens each time. I can run it on week4.xlsx as a dry run first.",
+  "tool_calls": [
+    {
+      "name": "recall_episodes",
+      "args": {
+        "query": "weekly sales dashboard"
+      }
+    }
+  ],
+  "cards": [
+    {
+      "kind": "episodes",
+      "episodes": [
+        {
+          "session_id": "s_w1_mon",
+          "date": "2026-09-07T13:00:00Z",
+          "intent_summary": "Build weekly sales dashboard",
+          "minutes": 9,
+          "tokens": 18000,
+          "score": 0.95
+        },
+        {
+          "session_id": "s_w2_mon",
+          "date": "2026-09-14T13:00:00Z",
+          "intent_summary": "Build weekly sales dashboard",
+          "minutes": 9,
+          "tokens": 18000,
+          "score": 0.95
+        },
+        {
+          "session_id": "s_w3_mon",
+          "date": "2026-09-21T13:00:00Z",
+          "intent_summary": "Build weekly sales dashboard",
+          "minutes": 9,
+          "tokens": 18000,
+          "score": 0.95
+        }
+      ]
+    },
+    {
+      "kind": "suggestion",
+      "suggestion": {
+        "pattern_id": "pat_uc1",
+        "title": "Weekly sales dashboard from Monday xlsx",
+        "reason": "You built this dashboard every Monday for 3 weeks, about 9 minutes each.",
+        "support": 3,
+        "distinct_days": 3,
+        "est_minutes_saved_week": 9,
+        "value": 22.4,
+        "signature": [
+          "file.open:xlsx",
+          "table.rename:cols",
+          "table.dropna",
+          "table.cast",
+          "table.pivot:2col",
+          "chart.bar",
+          "export.html"
+        ],
+        "dynamic_params": [
+          {
+            "name": "file",
+            "type": "file"
+          },
+          {
+            "name": "week",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "tool",
+      "tool": {
+        "tool_id": "tool_uc1",
+        "name": "weekly_sales_rollup",
+        "title": "Weekly sales dashboard",
+        "status": "active",
+        "trust": "dry_run",
+        "runs": 0,
+        "success_rate": 0,
+        "p50_ms": 0,
+        "minutes_saved": 0
+      }
+    }
+  ]
+}

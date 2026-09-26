@@ -1,0 +1,49 @@
+{
+  "_id": "pat_uc1",
+  "user_id": "u_1",
+  "status": "proposed",
+  "title": "Weekly sales dashboard from Monday xlsx",
+  "signature": [
+    "file.open:xlsx",
+    "table.rename:cols",
+    "table.dropna",
+    "table.cast",
+    "table.pivot:2col",
+    "chart.bar",
+    "export.html"
+  ],
+  "static_steps": {
+    "rename_map": {
+      "reg": "Region",
+      "amt": "Amount"
+    },
+    "pivot": {
+      "index": "Region",
+      "values": "Amount",
+      "aggfunc": "sum"
+    }
+  },
+  "dynamic_params": [
+    {
+      "name": "file",
+      "type": "file"
+    },
+    {
+      "name": "week",
+      "type": "string"
+    }
+  ],
+  "support": 3,
+  "distinct_days": 3,
+  "variance": 0.08,
+  "periodicity": 0.9,
+  "burstiness": 0.1,
+  "avg_minutes": 9,
+  "avg_tokens": 18000,
+  "value": 22.4,
+  "evidence_session_ids": [
+    "s_w1_mon",
+    "s_w2_mon",
+    "s_w3_mon"
+  ]
+}

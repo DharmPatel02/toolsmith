@@ -1,0 +1,19 @@
+{
+  "run_id": "run_fixture",
+  "mode": "dry_run",
+  "output": {
+    "summary": "Phase 0 fixture; nothing executed"
+  },
+  "intended_writes": [
+    {
+      "path": "dashboard.html",
+      "kind": "file"
+    }
+  ],
+  "needs_confirm": true,
+  "duration_ms": 0,
+  "tokens": 0,
+  "route": "found",
+  "tool_id": "tool_uc1",
+  "score": 1.0
+}

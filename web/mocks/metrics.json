@@ -1,0 +1,42 @@
+{
+  "minutes_saved_week": 0,
+  "tokens": {
+    "before": 0,
+    "after": 0
+  },
+  "break_even_runs": null,
+  "replay_pass_rate": 0,
+  "time_to_heal_seconds": null,
+  "decoy_false_positive_rate": 0,
+  "toolbox_count": 1,
+  "ablation": {
+    "logs_only": {
+      "workflows": 0,
+      "false_suggestions": 0
+    },
+    "logs_plus_screen": {
+      "workflows": 0,
+      "false_suggestions": 0
+    }
+  },
+  "capture_quality": {
+    "step_recall": 0,
+    "signature_precision": 0,
+    "boundary_ok": 0,
+    "pattern_recall": 0,
+    "noise": 0
+  },
+  "cost_to_observe_usd_day": 0,
+  "race": {
+    "baseline": {
+      "steps": 15,
+      "seconds": 30,
+      "tokens": 18000
+    },
+    "tool": {
+      "steps": 2,
+      "seconds": 1,
+      "tokens": 500
+    }
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "user_id": "u_1",
+  "capture_session_id": "capture_fixture",
+  "source": "chrome",
+  "events": [
+    {
+      "ts": "2026-09-26T14:30:00Z",
+      "kind": "click",
+      "url_template": "http://localhost:8081/products",
+      "element": {
+        "role": "button",
+        "name": "Search",
+        "data_attr": {}
+      },
+      "value_shape": null,
+      "frame_id": "client_0"
+    },
+    {
+      "ts": "2026-09-26T14:30:01Z",
+      "kind": "submit",
+      "url_template": "http://localhost:8081/products",
+      "element": {
+        "role": "form",
+        "name": "Search",
+        "data_attr": {}
+      },
+      "value_shape": {
+        "len": 4,
+        "type": "text"
+      },
+      "frame_id": "client_1"
+    },
+    {
+      "ts": "2026-09-26T14:30:02Z",
+      "kind": "nav",
+      "url_template": "http://localhost:8081/products",
+      "element": {
+        "role": "form",
+        "name": "Search",
+        "data_attr": {}
+      },
+      "value_shape": null,
+      "frame_id": null
+    }
+  ],
+  "frames": [
+    {
+      "client_id": "client_0",
+      "ts": "2026-09-26T14:30:00.400Z",
+      "trigger": "click",
+      "app": "chrome",
+      "window_title": "ToolSmith mock fixture",
+      "url_template": "http://localhost:8081/products",
+      "image_webp_b64": "<omitted>"
+    },
+    {
+      "client_id": "client_1",
+      "ts": "2026-09-26T14:30:01.400Z",
+      "trigger": "nav",
+      "app": "chrome",
+      "window_title": "ToolSmith mock fixture",
+      "url_template": "http://localhost:8081/products",
+      "image_webp_b64": "<omitted>"
+    }
+  ]
+}
