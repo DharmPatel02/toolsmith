@@ -12,7 +12,7 @@ from app.interpreter import jobs, stages, vocab
 from app.interpreter import service as interp
 from app.prompts import label_frames as lf
 from tests.p2.c.test_forge import PATTERN_UC1
-from tests.p2.c.uc1_frames import session_frames
+from tests.p2.c.uc1_frames import frame_image, session_frames
 
 load_dotenv()
 UC1_VERBS = {  # what a good VLM says for each step frame
@@ -150,6 +150,49 @@ def test_region_diff():
     a = stages.open_image(frame_image(*STEPS[0]))
     assert stages.region_diff(a, stages.open_image(frame_image(*STEPS[0], noise=3))) < stages.REGION_DIFF_MIN
     assert stages.region_diff(a, stages.open_image(frame_image(*STEPS[4]))) > stages.REGION_DIFF_MIN
+
+
+def _week(n: int) -> list[dict]:
+    """The week-1 frames re-recorded as week n: same screens, new ids and session."""
+    out = []
+    for f in session_frames():
+        out.append({**f, "_id": f["_id"].replace("f_", f"w{n}_"), "session_id": f"s_w{n}_mon"})
+    return out
+
+
+@pytest.mark.asyncio
+async def test_nn_label_copy_week3_needs_fewer_vlm_calls(env):
+    db, _, mp = env
+    await db.frames.insert_many(session_frames())
+    fake = FakeVLM(override={f"w3_{i:03d}": UC1_VERBS[f"f_{i:03d}"] for i in range(1, 8)} | {"w3_new": ("other", {}, 0.3)})
+    mp.setattr(lf.llm, "complete", fake.complete)
+    _, week1 = await interp.interpret_session_detailed("u_1", "s_w1_mon")
+    assert week1["vlm_frames"] == 7 and week1["nn_copied"] == 0
+
+    w3 = _week(3)
+    new = dict(session_frames()[4], _id="w3_new", session_id="s_w3_mon", ts="2026-09-21T09:30:00Z",
+               image=frame_image("Conditional formatting > Color scales", (5, 5, 5), (2, 2)))  # never seen before
+    await db.frames.insert_many(w3 + [new])
+    obs, week3 = await interp.interpret_session_detailed("u_1", "s_w3_mon")
+    assert week3["nn_copied"] == 7 and week3["vlm_frames"] == 1 < week1["vlm_frames"]
+    assert fake.calls[-1] == ["w3_new"] and week3["label_source"] == "vlm+nn_copy"
+    by = {o["evidence"]["frame_ids"][0]: o for o in obs}
+    assert by["w3_005"]["signature"] == "table.pivot:2col"
+    f = await db.frames.find_one({"_id": "w3_005"})
+    assert f["label"]["source"] == "nn_copy" and f["steps"][0]["copied_from"] == "f_005"
+
+
+@pytest.mark.asyncio
+async def test_nn_copy_skips_needs_review_labels(env):
+    db, _, mp = env
+    await db.frames.insert_many(session_frames())
+    mp.setattr(lf.llm, "complete", FakeVLM({"f_004": ("table.cast", {}, 0.4)}).complete)
+    await interp.interpret_session("u_1", "s_w1_mon")
+    await db.frames.insert_many(_week(2))
+    fake2 = FakeVLM()
+    mp.setattr(lf.llm, "complete", fake2.complete)
+    _, st = await interp.interpret_session_detailed("u_1", "s_w2_mon")
+    assert st["nn_copied"] == 6 and fake2.calls == [["w2_004"]]   # the unsure frame is asked again
 
 
 def test_click_target_resolution():

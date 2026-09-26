@@ -16,8 +16,10 @@ import asyncio
 import json
 import logging
 import os
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
+
+import numpy as np
 
 from app import embeddings
 from app.forge import deps
@@ -28,6 +30,9 @@ from app.prompts.label_frames import enforce_contract, label_frames
 log = logging.getLogger(__name__)
 VLM_BATCH = 8            # 6-10 frames per call (§3.5b)
 VLM_CONCURRENCY = 3
+NN_LABEL_COPY_MIN = 0.93  # §3.5b
+NN_WINDOW_DAYS = 7
+NN_MAX_REFS = 5000
 
 
 async def interpret_session(user_id: str, session_id: str) -> list[dict]:
@@ -82,20 +87,31 @@ async def interpret_session_detailed(user_id: str, session_id: str) -> tuple[lis
                                               for f in clean])
     voc = await vocab.load_vocab()
     verbs = vocab.active_verbs(voc)
-    steps, source, usage = await _label(session_id, clean, verbs)
-    stats.update(label_source=source, vlm_calls=len(usage), usd=round(sum(u.usd for u in usage), 6))
+    model = embeddings.mm_model()
+    copied, rest = [], clean
+    if hand_labels(session_id) is None:  # hand / precomputed labels cover the whole session
+        copied, rest = await nn_label_copy(user_id, session_id, clean, vecs, model)
+    steps, source, usage = await _label(session_id, rest, verbs) if rest else ([], "nn_copy", [])
+    copied = enforce_contract(copied, {f["_id"] for f in clean}, set(verbs))
+    for s in copied:
+        s["label_source"] = "nn_copy"
+    order = {f["_id"]: i for i, f in enumerate(clean)}
+    steps = sorted(copied + steps, key=lambda s: order[s["frame_id"]])
+    if copied and rest:
+        source = f"{source}+nn_copy"
+    stats.update(label_source=source, vlm_calls=len(usage), usd=round(sum(u.usd for u in usage), 6),
+                 nn_copied=len(copied), vlm_frames=len(rest) if usage else 0)
 
     # D — vocab + canonical signatures
     steps = await vocab.canonicalize(steps, voc)
     for s in steps:
         s["args_shape"] = vocab.fill_ext(s)
         s["signature"] = vocab.signature(s["verb"], s["args_shape"])
-        s["label_source"] = source
+        s.setdefault("label_source", source.split("+")[0])
 
     by_frame: dict[str, list[dict]] = {}
     for s in steps:
         by_frame.setdefault(s["frame_id"], []).append(s)
-    model = embeddings.mm_model()
     observations = []
     for f, vec in zip(clean, vecs, strict=True):
         fsteps = by_frame.get(f["_id"], [])
@@ -103,7 +119,7 @@ async def interpret_session_detailed(user_id: str, session_id: str) -> tuple[lis
         await _mark(f, kept=True, dhash=str(f["_dhash"]), extra={
             "ocr": f["_ocr"], "embedding": vec, "embedding_model": model, "steps": fsteps, "click_target": f["_click"],
             "label": {"verb": label["verb"], "signature": label["signature"], "args_shape": label.get("args_shape"),
-                      "confidence": label["confidence"], "source": source,
+                      "confidence": label["confidence"], "source": label["label_source"],
                       "needs_review": label["needs_review"]} if label else None})
         for s in fsteps:
             observations.append(to_observation(user_id, session_id, f, s))
@@ -136,6 +152,44 @@ async def _label(session_id: str, frames: list[dict], verbs: list[str]):
     order = {f["_id"]: i for i, f in enumerate(frames)}
     steps = sorted((s for st, _ in results for s in st), key=lambda s: order[s["frame_id"]])
     return steps, "vlm", [u for _, u in results]
+
+
+async def nn_label_copy(user_id: str, session_id: str, frames: list[dict], vecs: list[list[float]],
+                        model: str) -> tuple[list[dict], list[dict]]:
+    """Stage C shortcut (P4.3.7): copy the label of a near-identical frame (cosine >= 0.93) the
+    user already had labeled in the last 7 days (confident labels only, same embedding model),
+    numpy over the user's frames, so only new-looking frames cost a VLM call.
+    Returns (copied steps, frames still to label)."""
+    since = datetime.now(UTC) - timedelta(days=NN_WINDOW_DAYS)
+    refs = [d async for d in deps.get_db().frames.find(
+        {"user_id": user_id, "session_id": {"$ne": session_id}, "embedding_model": model,
+         "label.needs_review": False, "steps.0": {"$exists": True}},
+        {"embedding": 1, "steps": 1, "label": 1, "interp": 1}).limit(NN_MAX_REFS)]
+    refs = [r for r in refs if _aware(((r.get("interp") or {}).get("at"))) >= since]
+    if not refs:
+        return [], frames
+    m = np.asarray([r["embedding"] for r in refs], dtype=float)
+    m /= np.linalg.norm(m, axis=1, keepdims=True) + 1e-12
+    copied, rest = [], []
+    for f, v in zip(frames, vecs, strict=True):
+        q = np.asarray(v, dtype=float)
+        sims = m @ (q / (np.linalg.norm(q) + 1e-12))
+        i = int(sims.argmax())
+        if sims[i] < NN_LABEL_COPY_MIN:
+            rest.append(f)
+            continue
+        src = refs[i]
+        best = max(src["steps"], key=lambda s: s.get("confidence", 0))
+        copied.append({k: best.get(k) for k in ("app", "verb", "target", "args_shape", "proposed_verb") if k in best}
+                      | {"frame_id": f["_id"], "confidence": round(min(float(best["confidence"]), float(sims[i])), 3),
+                         "copied_from": src["_id"], "similarity": round(float(sims[i]), 4)})
+    return copied, rest
+
+
+def _aware(dt) -> datetime:
+    if dt is None:
+        return datetime.min.replace(tzinfo=UTC)
+    return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
 
 
 def labels_dir() -> Path:
