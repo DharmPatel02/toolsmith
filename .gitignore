@@ -14,3 +14,8 @@ data/recordings/
 *.egg-info/
 .coverage
 htmlcov/
+data/recordings/**/*.mp4
+data/recordings/**/*.mov
+data/recordings/**/*.mkv
+data/recordings/**/*.webm
+data/recordings/uc1/keyframes/

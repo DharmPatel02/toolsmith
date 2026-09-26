@@ -1,0 +1,31 @@
+Title: Sparse Routing Adapters for Low-Resource Translation
+
+Abstract
+We study how to adapt a pretrained translation model to language pairs with fewer than
+50k parallel sentences. Full fine-tuning overfits quickly in this regime, and plain adapters
+leave accuracy on the table.
+
+1. Introduction
+Low-resource translation remains hard because most parameters of a large model are tuned
+for high-resource pairs. We ask whether a small routed set of adapters can recover most of
+the gap at a fraction of the cost.
+
+2. Method
+We propose Sparse Routing Adapters (SRA): each transformer layer gets 8 small bottleneck
+adapters and a learned router that activates the top-2 adapters per token. Only the adapters
+and routers are trained; the base model stays frozen. Training uses label smoothing 0.1 and
+a routing balance loss weighted 0.01.
+
+3. Datasets
+We evaluate on FLORES-200 (Nepali-English, Sinhala-English) and on the IWSLT 2017
+Kazakh-English test set.
+
+4. Metrics
+We report chrF++ and BLEU, averaged over three seeds.
+
+5. Results
+SRA reaches 41.2 chrF++ on Nepali-English, +2.7 over plain adapters and within 0.4 of full
+fine-tuning, while training 3.1% of the parameters.
+
+6. Limitations
+Routing adds 6% inference latency. We did not test pairs with more than 1M sentences.

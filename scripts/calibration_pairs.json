@@ -1,0 +1,20 @@
+{
+  "_doc": "P2.3.5: (intent, expected tool) pairs. tool = uc1 | uc3 | null (nothing in the toolbox fits). Paraphrases on purpose.",
+  "pairs": [
+    {"intent": "make the weekly sales dashboard from this Monday's workbook", "tool": "uc1"},
+    {"intent": "pivot sales by region for week 4 and chart it", "tool": "uc1"},
+    {"intent": "turn the sales xlsx into a bar chart by region", "tool": "uc1"},
+    {"intent": "Monday sales report please", "tool": "uc1"},
+    {"intent": "sum the amounts per region in the new sales file", "tool": "uc1"},
+    {"intent": "build the regional revenue summary html", "tool": "uc1"},
+    {"intent": "check today's prices on the shop", "tool": "uc3"},
+    {"intent": "scrape the product list with prices from the mock site", "tool": "uc3"},
+    {"intent": "which product is cheapest on the store right now", "tool": "uc3"},
+    {"intent": "price watch for the shop page", "tool": "uc3"},
+    {"intent": "summarise this research paper's method section", "tool": null},
+    {"intent": "draft an email to the team about Friday's offsite", "tool": null},
+    {"intent": "convert this pdf invoice to a csv", "tool": null},
+    {"intent": "plot my running times from strava", "tool": null},
+    {"intent": "translate the meeting notes into German", "tool": null}
+  ]
+}

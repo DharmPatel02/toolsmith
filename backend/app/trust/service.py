@@ -1,20 +1,8 @@
-"""Phase 0 fixture stub. P2 owns its real implementation."""
+"""Trust service (TASKS §3.3): promote · update_after_run · check_drift (+ heal, reject)."""
+from app.trust.drift import check_drift
+from app.trust.heal import heal_tool
+from app.trust.ladder import update_after_run
+from app.trust.promote import promote, reject
+from app.trust.prune import prune
 
-from app.contracts import Run
-from app.fixtures import fixture, require_demo_user, require_stub
-
-
-async def promote(candidate_id: str, user_id: str) -> str:
-    require_demo_user(user_id)
-    if candidate_id != fixture("candidate_uc1.json")["_id"]:
-        raise LookupError("Unknown fixture candidate")
-    return fixture("tool_uc1.json")["tool_id"]
-
-
-async def update_after_run(run: Run) -> None:
-    require_demo_user(run.user_id)
-
-
-async def check_drift(tool_id: str) -> bool:
-    require_stub()
-    return False
+__all__ = ["check_drift", "heal_tool", "promote", "prune", "reject", "update_after_run"]

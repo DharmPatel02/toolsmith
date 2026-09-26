@@ -1,0 +1,18 @@
+{
+  "type": "bar",
+  "x": [
+    "Central",
+    "East",
+    "North",
+    "South",
+    "West"
+  ],
+  "y": [
+    9406.82,
+    9349.59,
+    7200.8,
+    9247.24,
+    8297.25
+  ],
+  "title": "Sales by Region - week 1"
+}

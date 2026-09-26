@@ -1,0 +1,7 @@
+{
+ "title": "Sparse Routing Adapters for Low-Resource Translation",
+ "method": "We propose Sparse Routing Adapters (SRA): each transformer layer gets 8 small bottleneck adapters and a learned router that activates the top-2 adapters per token.",
+ "datasets": "We evaluate on FLORES-200 (Nepali-English, Sinhala-English) and on the IWSLT 2017 Kazakh-English test set.",
+ "metrics": "We report chrF++ and BLEU, averaged over three seeds.",
+ "main_result": "SRA reaches 41.2 chrF++ on Nepali-English, +2.7 over plain adapters and within 0.4 of full fine-tuning, while training 3.1% of the parameters."
+}

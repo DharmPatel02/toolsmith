@@ -1,0 +1,28 @@
+TITLE: Label-Efficient Defect Detection with Masked Patch Pretraining
+
+ABSTRACT
+Industrial inspection lines produce many images but few labeled defects. We show that
+masked patch pretraining on unlabeled line images cuts the labels needed for a target
+accuracy by a factor of four.
+
+1 INTRODUCTION
+Supervised detectors need thousands of labeled defects per product type. Collecting them
+stalls every new production line for weeks.
+
+2 APPROACH
+Our approach, Masked Patch Pretraining (MPP), pretrains a ViT-S encoder by masking 60% of
+16x16 patches and reconstructing them in pixel space on 200k unlabeled line images. A
+light detection head is then fine-tuned on the few labeled defects.
+
+3 DATA
+MVTec AD and VisA, plus 200k unlabeled images from our own inspection line.
+
+4 EVALUATION METRICS
+Image-level AUROC and pixel-level PRO score.
+
+5 RESULTS
+With 50 labeled defects per class, MPP reaches 97.8 image AUROC on MVTec AD, matching a
+supervised baseline trained on 200 labels.
+
+6 LIMITATIONS
+Pretraining takes 14 GPU hours per product line; transparent parts remain hard.
