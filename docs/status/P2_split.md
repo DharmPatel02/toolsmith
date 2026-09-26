@@ -75,3 +75,12 @@ Format: `HH:MM · C→X or X→C · what · status`
   - `expected/weekN_pivot.csv`: columns `Region,Amount`, sorted by Region, Amount rounded to 2 dp.
   - `expected/weekN_chart.json`: `{"type": "bar", "x": [regions sorted], "y": [amounts], "title": "Sales by Region - week N"}`.
   - The forged tool returns `{"summary": str, "tables": {"pivot": [{"Region":..,"Amount":..}]}, "chart_spec": {same shape}}` and writes `dashboard.html`. · open
+- 12:40 · C (Codex idle, on C's critical path) · merged `p2-codex` (unrelated history, `--allow-unrelated-histories`) and fixed lane-X files to the contract:
+  runner calls `entry(ctx, **params)` (was positional dict) · `net:<domain>` checked per host (was literal `net:`) ·
+  inputs keep the source extension so `read_table("file")` parses xlsx · live `write_output` needs `write:outputs` ·
+  subprocess runs via `asyncio.to_thread` (was blocking the event loop) · UC1 artifacts rebuilt to the agreed
+  `reg/amt` shape (week 3 `region_name/amount`, messy rows) with `Region,Amount` pivot + `{type,x,y,title}` chart.
+  Tests: `tests/p2/c/test_sandbox_contract.py`, `tests/p2/x/test_uc1_artifacts.py`. · done
+- 12:40 · C→X · **Still open, needs Docker**: P2.1.2 `sandbox/Dockerfile` (uncommitted in the codex worktree) and a Docker
+  path in `runner.py` (`--network none` unless a `net:` scope, read-only FS, tmpfs, 512 MB). The current runner is a
+  plain subprocess = no OS-level isolation; OK for dev, not for the "sandbox" claim on stage. · open

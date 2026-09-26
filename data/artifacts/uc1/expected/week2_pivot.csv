@@ -1,6 +1,6 @@
-Region,Category,Revenue
-East,Services,615.20
-East,Software,1750.00
-North,Hardware,1325.00
-South,Services,1112.40
-West,Hardware,920.35
+Region,Amount
+Central,9868.81
+East,10555.18
+North,9494.41
+South,6835.13
+West,9116.23

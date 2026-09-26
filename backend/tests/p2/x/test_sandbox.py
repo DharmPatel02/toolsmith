@@ -7,9 +7,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from app.sandbox.runner import run_in_sandbox
 
-
 PIVOT_TOOL = r'''
-def main(ctx, params):
+def main(ctx, **params):
     rows = ctx.read_table("sales.csv")
     if hasattr(rows, "groupby"):
         summary = rows.groupby("region", as_index=False)["sales"].sum()
@@ -51,7 +50,7 @@ class SandboxRunnerTests(unittest.TestCase):
     def test_fetch_requires_net_scope(self):
         result = self.run_async(
             run_in_sandbox(
-                "def main(ctx, params):\n    ctx.fetch('https://example.com')\n",
+                "def main(ctx, **params):\n    ctx.fetch('https://example.com')\n",
                 "main",
                 {},
                 {},
@@ -67,7 +66,7 @@ class SandboxRunnerTests(unittest.TestCase):
     def test_timeout_kills_infinite_loop(self):
         result = self.run_async(
             run_in_sandbox(
-                "def main(ctx, params):\n    while True:\n        pass\n",
+                "def main(ctx, **params):\n    while True:\n        pass\n",
                 "main",
                 {},
                 {},

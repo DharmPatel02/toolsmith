@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import shutil
@@ -77,7 +78,9 @@ async def run_in_sandbox(
             "PYTHONPATH": os.pathsep.join([str(Path(__file__).parent), str(root), str(tools_dir)]),
         }
         try:
-            proc = subprocess.run(
+            # off the event loop: a 30 s tool run must not freeze the API / SSE
+            proc = await asyncio.to_thread(
+                subprocess.run,
                 command,
                 cwd=root,
                 env=env,
@@ -124,7 +127,9 @@ def _materialize_inputs(input_dir: Path, inputs: dict[str, str]) -> None:
             raise PermissionError(f"input path escapes sandbox: {name}")
         dest.parent.mkdir(parents=True, exist_ok=True)
         src = Path(value)
-        if src.exists() and src.is_file():
+        if len(value) < 400 and src.exists() and src.is_file():
+            if not dest.suffix and src.suffix:  # "file" -> "file.xlsx" so read_table picks the parser
+                dest = dest.with_suffix(src.suffix)
             shutil.copyfile(src, dest)
         else:
             dest.write_text(value, encoding="utf-8")
@@ -184,7 +189,7 @@ def main() -> None:
             assert spec and spec.loader
             spec.loader.exec_module(module)
             fn = getattr(module, cfg["entry"])
-            value = fn(ctx, cfg["params"])
+            value = fn(ctx, **cfg["params"])
             output = value if isinstance(value, dict) else {"result": value}
         ok = True
     except Exception:

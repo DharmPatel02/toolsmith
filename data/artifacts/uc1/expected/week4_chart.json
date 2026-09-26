@@ -1,24 +1,18 @@
 {
-  "kind": "bar",
-  "series": [
-    {
-      "region": "East",
-      "revenue": 830.8
-    },
-    {
-      "region": "North",
-      "revenue": 1560.1
-    },
-    {
-      "region": "South",
-      "revenue": 1675.0
-    },
-    {
-      "region": "West",
-      "revenue": 2395.7
-    }
+  "type": "bar",
+  "x": [
+    "Central",
+    "East",
+    "North",
+    "South",
+    "West"
   ],
-  "title": "Revenue by Region",
-  "x": "Region",
-  "y": "Revenue"
+  "y": [
+    7705.84,
+    6006.78,
+    9778.45,
+    9023.78,
+    11025.57
+  ],
+  "title": "Sales by Region - week 4"
 }

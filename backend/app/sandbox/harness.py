@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import csv
+import glob
 import json
 import urllib.request
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Literal
+from urllib.parse import urlparse
 
 
 @dataclass(slots=True)
@@ -35,7 +37,11 @@ class SandboxContext:
         if not str(path).startswith(str(self.inputs_dir.resolve())):
             raise PermissionError(f"input path escapes sandbox: {name}")
         if not path.exists():
-            raise FileNotFoundError(name)
+            # inputs are mounted with the source extension: "file" -> "file.xlsx"
+            matches = sorted(self.inputs_dir.glob(f"{glob.escape(name)}.*"))
+            if not matches:
+                raise FileNotFoundError(name)
+            path = matches[0]
         return path
 
     def read_text(self, name: str) -> str:
@@ -46,7 +52,7 @@ class SandboxContext:
         suffix = path.suffix.lower()
         try:
             import pandas as pd  # type: ignore
-        except Exception:
+        except ImportError:
             pd = None
 
         if pd is not None:
@@ -58,8 +64,10 @@ class SandboxContext:
             return list(csv.DictReader(handle))
 
     def fetch(self, url: str) -> str:
-        if "net:" not in self.scopes:
-            raise PermissionError("network access requires the net: scope")
+        host = (urlparse(url).hostname or "").lower()
+        allowed = {sc[4:].lower() for sc in self.scopes if sc.startswith("net:")}
+        if not any(host == d or host.endswith("." + d) or d == "*" for d in allowed):
+            raise PermissionError(f"network access requires the net:{host} scope")
         with urllib.request.urlopen(url, timeout=10) as response:
             return response.read().decode("utf-8")
 
@@ -72,6 +80,8 @@ class SandboxContext:
         self.intended_writes.append(Write(path=name, kind=_kind_for(name), bytes=len(payload)))
         if self.mode == "dry_run":
             return
+        if "write:outputs" not in self.scopes:
+            raise PermissionError("writing outputs requires the write:outputs scope")
 
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(payload)
@@ -84,7 +94,7 @@ def _serialize(data: Any) -> bytes:
         return data.encode("utf-8")
     try:
         import pandas as pd  # type: ignore
-    except Exception:
+    except ImportError:
         pd = None
 
     if pd is not None and isinstance(data, pd.DataFrame):

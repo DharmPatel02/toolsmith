@@ -1,134 +1,91 @@
+"""UC1 reference: Monday sales workbook -> pivot by Region + bar chart spec.
+
+    python reference.py           # recompute expected/ from the week*.xlsx files
+    python reference.py --build   # also regenerate the week*.xlsx files (deterministic data)
+
+Shape (see docs/status/P2_split.md, "UC1 artifacts"):
+- week1/2/4.xlsx columns: date, reg, product, amt
+- week3.xlsx is renamed:  date, region_name, product, amount   (drift the tool must absorb)
+- messy on purpose: amounts stored as text, missing amounts, a row with no region, an empty row
+- steps: rename -> dropna -> cast float -> pivot sum by Region (the UC1 pattern signature)
+"""
 from __future__ import annotations
 
 import csv
 import json
+import random
+import sys
+from datetime import date, timedelta
 from pathlib import Path
 
-from openpyxl import Workbook, load_workbook
-
+import pandas as pd
+from openpyxl import Workbook
 
 ROOT = Path(__file__).resolve().parent
 EXPECTED = ROOT / "expected"
-
-WEEKS = {
-    1: [
-        ("North", "Hardware", 1240.50),
-        ("South", "Hardware", 980.00),
-        ("North", "Software", 2225.25),
-        ("West", "Services", 870.00),
-        ("South", "Software", 1410.75),
-    ],
-    2: [
-        ("North", "Hardware", 1325.00),
-        ("South", "Services", 1112.40),
-        ("East", "Software", 1750.00),
-        ("West", "Hardware", 920.35),
-        ("East", "Services", 615.20),
-    ],
-    3: [
-        ("North", "Hardware", 1420.00),
-        ("South", "Hardware", 1015.75),
-        ("East", "Software", 1999.99),
-        ("West", "Services", 1201.10),
-        ("North", "Services", 740.00),
-    ],
-    4: [
-        ("North", "Hardware", 1560.10),
-        ("South", "Software", 1675.00),
-        ("East", "Services", 830.80),
-        ("West", "Hardware", 1105.25),
-        ("West", "Software", 1290.45),
-    ],
-}
-
-HEADERS = {
-    1: ("Region", "Category", "Revenue"),
-    2: ("Region", "Category", "Revenue"),
-    3: ("Sales Region", "Business Line", "Net Revenue"),
-    4: ("Region", "Category", "Revenue"),
-}
-
-COLUMN_ALIASES = {
-    "Sales Region": "Region",
-    "Business Line": "Category",
-    "Net Revenue": "Revenue",
-}
+MONDAYS = {1: date(2026, 9, 7), 2: date(2026, 9, 14), 3: date(2026, 9, 21), 4: date(2026, 9, 28)}
+REGIONS = ["Central", "East", "North", "South", "West"]
+PRODUCTS = ["Hardware", "Software", "Services"]
+HEADERS = {w: ["date", "reg", "product", "amt"] for w in MONDAYS}
+HEADERS[3] = ["date", "region_name", "product", "amount"]
+RENAME = {"reg": "Region", "region_name": "Region", "amt": "Amount", "amount": "Amount"}
 
 
-def write_workbooks() -> None:
-    ROOT.mkdir(parents=True, exist_ok=True)
-    for week, rows in WEEKS.items():
+def rows_for(week: int) -> list[list]:
+    rng = random.Random(1000 + week)
+    day = MONDAYS[week] - timedelta(days=7)
+    rows: list[list] = []
+    for i in range(36):
+        amt: object = round(rng.uniform(150, 2500), 2)
+        if i % 7 == 3:
+            amt = f"{amt:.2f}"           # number stored as text
+        if i % 11 == 5:
+            amt = None                   # missing amount
+        region = REGIONS[(i * 3 + week) % len(REGIONS)] if i != 17 else None  # one row without region
+        rows.append([(day + timedelta(days=i % 5)).isoformat(), region, PRODUCTS[i % 3], amt])
+    rows.insert(20, [None, None, None, None])  # empty row
+    return rows
+
+
+def build_workbooks() -> None:
+    for week in MONDAYS:
         wb = Workbook()
         ws = wb.active
         ws.title = "Sales"
         ws.append(HEADERS[week])
-        for row in rows:
+        for row in rows_for(week):
             ws.append(row)
         wb.save(ROOT / f"week{week}.xlsx")
 
 
-def load_sales(path: Path) -> list[dict[str, str]]:
-    wb = load_workbook(path, data_only=True)
-    ws = wb["Sales"]
-    headers = [COLUMN_ALIASES.get(cell.value, cell.value) for cell in ws[1]]
-    rows: list[dict[str, str]] = []
-    for values in ws.iter_rows(min_row=2, values_only=True):
-        row = dict(zip(headers, values, strict=True))
-        rows.append(
-            {
-                "Region": str(row["Region"]),
-                "Category": str(row["Category"]),
-                "Revenue": f"{float(row['Revenue']):.2f}",
-            }
-        )
-    return rows
+def pivot(path: Path) -> pd.DataFrame:
+    df = pd.read_excel(path).rename(columns=RENAME)
+    df["Amount"] = pd.to_numeric(df["Amount"], errors="coerce")
+    df = df.dropna(subset=["Region", "Amount"])
+    out = df.pivot_table(index="Region", values="Amount", aggfunc="sum").reset_index()
+    out = out.sort_values("Region").reset_index(drop=True)
+    out["Amount"] = out["Amount"].round(2)
+    return out
 
 
-def pivot(rows: list[dict[str, str]]) -> list[dict[str, str]]:
-    totals: dict[tuple[str, str], float] = {}
-    for row in rows:
-        key = (row["Region"], row["Category"])
-        totals[key] = totals.get(key, 0.0) + float(row["Revenue"])
-    return [
-        {"Region": region, "Category": category, "Revenue": f"{revenue:.2f}"}
-        for (region, category), revenue in sorted(totals.items())
-    ]
-
-
-def chart(pivot_rows: list[dict[str, str]]) -> dict:
-    by_region: dict[str, float] = {}
-    for row in pivot_rows:
-        by_region[row["Region"]] = by_region.get(row["Region"], 0.0) + float(row["Revenue"])
-    return {
-        "kind": "bar",
-        "title": "Revenue by Region",
-        "x": "Region",
-        "y": "Revenue",
-        "series": [
-            {"region": region, "revenue": round(revenue, 2)}
-            for region, revenue in sorted(by_region.items())
-        ],
-    }
+def chart(p: pd.DataFrame, week: int) -> dict:
+    return {"type": "bar", "x": p["Region"].tolist(), "y": [float(v) for v in p["Amount"]],
+            "title": f"Sales by Region - week {week}"}
 
 
 def write_expected() -> None:
     EXPECTED.mkdir(parents=True, exist_ok=True)
-    for week in sorted(WEEKS):
-        rows = pivot(load_sales(ROOT / f"week{week}.xlsx"))
-        with (EXPECTED / f"week{week}_pivot.csv").open("w", encoding="utf-8", newline="") as handle:
-            writer = csv.DictWriter(handle, fieldnames=["Region", "Category", "Revenue"])
-            writer.writeheader()
-            writer.writerows(rows)
+    for week in sorted(MONDAYS):
+        p = pivot(ROOT / f"week{week}.xlsx")
+        with (EXPECTED / f"week{week}_pivot.csv").open("w", encoding="utf-8", newline="") as fh:
+            w = csv.writer(fh)
+            w.writerow(["Region", "Amount"])
+            w.writerows([r, f"{a:.2f}"] for r, a in zip(p["Region"], p["Amount"], strict=True))
         (EXPECTED / f"week{week}_chart.json").write_text(
-            json.dumps(chart(rows), indent=2, sort_keys=True) + "\n",
-            encoding="utf-8",
-        )
-
-
-def main() -> None:
-    write_workbooks()
-    write_expected()
+            json.dumps(chart(p, week), indent=2) + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":
-    main()
+    if "--build" in sys.argv:
+        build_workbooks()
+    write_expected()
