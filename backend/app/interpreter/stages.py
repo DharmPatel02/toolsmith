@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import io
+import logging
 import re
 from functools import lru_cache
 
@@ -15,6 +16,7 @@ import imagehash
 import numpy as np
 from PIL import Image
 
+log = logging.getLogger(__name__)
 DHASH_MAX_HAMMING = 6
 REGION_DIFF_MIN = 0.02
 PIXEL_DELTA = 25          # grey-level change that counts as "changed"
@@ -76,15 +78,37 @@ def to_webp(img: Image.Image, max_side: int = MAX_SIDE, quality: int = 70) -> by
 
 @lru_cache(maxsize=1)
 def _ocr_engine():
-    from rapidocr_onnxruntime import RapidOCR
+    """RapidOCR, else Tesseract (pytesseract + binary), else None (no OCR, the VLM still sees pixels)."""
+    try:
+        from rapidocr_onnxruntime import RapidOCR
 
-    return RapidOCR()
+        return "rapid", RapidOCR()
+    except ImportError:
+        pass
+    try:
+        import pytesseract
+
+        pytesseract.get_tesseract_version()
+        return "tesseract", pytesseract
+    except Exception:  # noqa: BLE001 - not installed / no binary
+        log.warning("no OCR engine (rapidocr_onnxruntime or tesseract); frames go to the VLM without OCR")
+        return "none", None
 
 
 def _ocr_sync(img: Image.Image) -> dict:
-    result, _ = _ocr_engine()(np.asarray(img))
-    boxes = [{"text": t, "box": [int(v) for pt in (b[0], b[2]) for v in pt], "score": round(float(s), 3)}
-             for b, t, s in (result or [])]
+    kind, engine = _ocr_engine()
+    if kind == "rapid":
+        result, _ = engine(np.asarray(img))
+        boxes = [{"text": t, "box": [int(v) for pt in (b[0], b[2]) for v in pt], "score": round(float(s), 3)}
+                 for b, t, s in (result or [])]
+    elif kind == "tesseract":
+        d = engine.image_to_data(img, output_type=engine.Output.DICT)
+        boxes = [{"text": t.strip(), "box": [d["left"][i], d["top"][i], d["left"][i] + d["width"][i],
+                                             d["top"][i] + d["height"][i]],
+                  "score": round(float(d["conf"][i]) / 100, 3)}
+                 for i, t in enumerate(d["text"]) if t.strip() and float(d["conf"][i]) > 0]
+    else:
+        boxes = []
     return {"text": "\n".join(b["text"] for b in boxes), "boxes": boxes}
 
 
@@ -125,15 +149,39 @@ def secret_rule(text: str) -> str | None:
     return None
 
 
+def click_target(frame: dict, ocr_result: dict, element: dict | None = None) -> dict | None:
+    """What was clicked in this frame. DOM element (T1 `ui_events.element`, linked by frame_id)
+    wins, matched to its OCR box by text; else the click point (`frame.click = {x, y}`) inside
+    the smallest OCR box that contains it."""
+    boxes = ocr_result.get("boxes", [])
+    if element and element.get("name"):
+        name = element["name"].strip().lower()
+        match = next((b for b in boxes if b["text"].strip().lower() == name), None) or \
+            next((b for b in boxes if name in b["text"].lower() or b["text"].lower() in name and len(b["text"]) > 2),
+                 None)
+        return {"role": element.get("role"), "name": element["name"], "box": match["box"] if match else None,
+                "source": "dom"}
+    click = frame.get("click")
+    if click and "x" in click and "y" in click:
+        x, y = click["x"], click["y"]
+        inside = [b for b in boxes if b["box"][0] <= x <= b["box"][2] and b["box"][1] <= y <= b["box"][3]]
+        if inside:
+            hit = min(inside, key=lambda b: (b["box"][2] - b["box"][0]) * (b["box"][3] - b["box"][1]))
+            return {"role": None, "name": hit["text"], "box": hit["box"], "source": "ocr"}
+    return None
+
+
 _SHEET_TAB = re.compile(r"^(Sheet\d+|[A-Z][\w ]{1,20})$")
 
 
-def hints(frame: dict, ocr_result: dict) -> dict:
-    """Cheap context for the VLM: title, app, likely headers / sheet tabs from OCR boxes."""
+def hints(frame: dict, ocr_result: dict, clicked: dict | None = None) -> dict:
+    """Cheap context for the VLM: title, app, likely headers / sheet tabs from OCR boxes, and
+    what was clicked (click-target resolution)."""
     boxes = ocr_result.get("boxes", [])
     top = sorted(boxes, key=lambda b: b["box"][1])[:12]
     bottom = sorted(boxes, key=lambda b: -b["box"][3])[:6]
     h = {"window_title": frame.get("window_title"), "app": frame.get("app"), "url": frame.get("url_template"),
          "top_text": [b["text"] for b in top],
-         "sheet_tabs": [b["text"] for b in bottom if _SHEET_TAB.match(b["text"])]}
+         "sheet_tabs": [b["text"] for b in bottom if _SHEET_TAB.match(b["text"])],
+         "clicked": {k: clicked[k] for k in ("role", "name") if clicked.get(k)} if clicked else None}
     return {k: v for k, v in h.items() if v}

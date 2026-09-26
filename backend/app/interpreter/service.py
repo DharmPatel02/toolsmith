@@ -68,7 +68,9 @@ async def interpret_session_detailed(user_id: str, session_id: str) -> tuple[lis
             await drop_secret_frame(f, rule)
             _count(stats, f"secret_{rule}")
             continue
-        f["_hints"] = stages.hints(f, f["_ocr"])
+        ev = await db.ui_events.find_one({"frame_id": f["_id"]}, {"element": 1})  # T1 click linked to this frame
+        f["_click"] = stages.click_target(f, f["_ocr"], (ev or {}).get("element"))
+        f["_hints"] = stages.hints(f, f["_ocr"], f["_click"])
         f["_webp"] = stages.to_webp(f["_img"])
         clean.append(f)
     stats["kept"] = len(clean)
@@ -99,7 +101,7 @@ async def interpret_session_detailed(user_id: str, session_id: str) -> tuple[lis
         fsteps = by_frame.get(f["_id"], [])
         label = max(fsteps, key=lambda s: s["confidence"]) if fsteps else None
         await _mark(f, kept=True, dhash=str(f["_dhash"]), extra={
-            "ocr": f["_ocr"], "embedding": vec, "embedding_model": model, "steps": fsteps,
+            "ocr": f["_ocr"], "embedding": vec, "embedding_model": model, "steps": fsteps, "click_target": f["_click"],
             "label": {"verb": label["verb"], "signature": label["signature"], "args_shape": label.get("args_shape"),
                       "confidence": label["confidence"], "source": source,
                       "needs_review": label["needs_review"]} if label else None})

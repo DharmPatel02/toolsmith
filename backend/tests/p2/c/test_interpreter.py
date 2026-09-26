@@ -152,6 +152,32 @@ def test_region_diff():
     assert stages.region_diff(a, stages.open_image(frame_image(*STEPS[4]))) > stages.REGION_DIFF_MIN
 
 
+def test_click_target_resolution():
+    ocr = {"boxes": [{"text": "Insert", "box": [10, 10, 80, 30]}, {"text": "PivotTable", "box": [100, 10, 200, 30]},
+                     {"text": "Insert PivotTable dialog", "box": [0, 0, 400, 300]}]}
+    dom = stages.click_target({}, ocr, {"role": "button", "name": "PivotTable"})
+    assert dom == {"role": "button", "name": "PivotTable", "box": [100, 10, 200, 30], "source": "dom"}
+    pt = stages.click_target({"click": {"x": 150, "y": 20}}, ocr)    # smallest box containing the point
+    assert pt["name"] == "PivotTable" and pt["source"] == "ocr"
+    assert stages.click_target({"click": {"x": 900, "y": 900}}, ocr) is None
+    assert stages.hints({}, ocr, dom)["clicked"] == {"role": "button", "name": "PivotTable"}
+
+
+@pytest.mark.asyncio
+async def test_click_target_from_linked_ui_event(env):
+    db, _, mp = env
+    await db.frames.insert_many(session_frames())
+    await db.ui_events.insert_one({"user_id": "u_1", "kind": "click", "frame_id": "f_005",
+                                   "element": {"role": "button", "name": "PivotTable"}})
+    fake = FakeVLM()
+    mp.setattr(lf.llm, "complete", fake.complete)
+    await interp.interpret_session("u_1", "s_w1_mon")
+    f5 = await db.frames.find_one({"_id": "f_005"})
+    assert f5["click_target"]["source"] == "dom" and f5["click_target"]["name"] == "PivotTable"
+    assert f5["click_target"]["box"] is not None                      # found in the frame's OCR
+    assert (await db.frames.find_one({"_id": "f_001"}))["click_target"] is None
+
+
 def test_secret_rules():
     assert stages.secret_rule("password: hunter22") == "credential"
     assert stages.secret_rule("mail me at a.b@example.com") == "email"
