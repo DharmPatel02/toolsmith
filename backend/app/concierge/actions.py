@@ -61,7 +61,21 @@ async def approve_change(user_id: str, change_id: str) -> dict:
     except ImportError:
         pass
     else:
-        return await p1_approve(user_id, change_id)
+        try:
+            change = await p1_approve(user_id, change_id)
+        except (LookupError, ValueError) as exc:
+            return {"error": str(exc)}
+        row = (
+            change.model_dump(mode="json", by_alias=True)
+            if hasattr(change, "model_dump")
+            else dict(change)
+        )
+        return {
+            "ok": True,
+            "field": row.get("field"),
+            "value": row.get("to"),
+            "status": row.get("status"),
+        }
     db = deps.get_db()
     policy = await db.policy.find_one({"_id": f"policy:{user_id}"})
     change = next(

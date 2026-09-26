@@ -794,6 +794,10 @@ Format: `HH:MM · from PN · to owner PM · what + why · status (open / done)`
 - 14:30 · from P3 · to P1 · integration: compose `api`/`worker` install only `base.txt` → API crashes on P2 imports (`jsonschema`, `litellm`). Install `base.txt + p2.txt + p3.txt` (verified healthy locally) · open
 - 14:30 · from P3 · to P1 · §3.4 routes still missing: `POST /suggestions/{id}/accept|decline|snooze`, `/tools/{id}/feedback`, `/tools/{id}/rollback`, `/policy/changes/{id}/approve`, `/consolidate` · open
 - 14:30 · from P3 · to P2 · `p2-forge` has unrelated history (needs `--allow-unrelated-histories`); after merging with `main`, 7 P2 tests fail because P1 stubs (STUB_MODE) answer instead of `deps.py` fallbacks — stub `deps.*` in tests. P2 routes 500 without `MONGODB_URI` · open
+- 15:40 · from P3 · to P1 · compose `api`/`worker` need `env_file: .env`: P2's `llm.py` reads `os.environ`, which the container never gets from `.env` → `/chat` 503 "LLM_LEAN_MODEL is not set". Verified fix locally (live chat answers via OpenRouter) · open
+- 15:40 · from P3 · to P1 · `test_runtime_found_request_writes_memory_and_run` patches `runtime.service.update_after_run`, but service imports it inside the function → AttributeError · open
+- 15:40 · from P3 · to P1/P2 · in fixture mode `search_tools` returns the fixture tool (score 1.00) for any query, so forge/heal gates and `/ideas` report "duplicate"/"covered" for everything · open
+- 15:40 · from P3 · to all · Atlas user can't create `toolsmith_p2_txn_test` (P2 live txn test → Unauthorized); grant the role or point the test at `toolsmith` · open
 - 12:50 · from P3 · to all · `ChatReply.cards` shape: `{kind: tool|suggestion|episodes|run|idea, ...}` (see `web/lib/types.ts` ChatCard) · done
 
 ---

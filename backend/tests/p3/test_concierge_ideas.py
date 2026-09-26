@@ -109,8 +109,12 @@ async def test_post_ideas_route(env):
         assert (await c.post("/ideas", json={"text": "  "})).status_code == 422
 
 
-async def test_feedback_and_approve_change(env):
+async def test_feedback_and_approve_change(env, monkeypatch):
     db, _, events = env
+    # Exercise the fallback path (P1's approve_change talks to its own DB, not this mock).
+    import app.policy.service as policy_service
+
+    monkeypatch.delattr(policy_service, "approve_change", raising=False)
     fb = await actions.submit_feedback(
         "u_1", tool_id="tool_uc1", decision="edit", reason="also export PDF"
     )
@@ -168,3 +172,26 @@ async def test_chat_routes_idea_tool_and_returns_idea_card(env, monkeypatch):
     assert reply["cards"][0]["kind"] == "idea"
     assert reply["cards"][0]["idea"]["spec"]["name"] == "daily_stock_alert"
     assert "spec" in reply["reply"]
+
+
+async def test_approve_change_adapts_p1_result(env, monkeypatch):
+    import app.policy.service as policy_service
+    from app.contracts import PolicyChange
+
+    async def p1_approve(user_id, change_id):
+        if change_id == "missing":
+            raise LookupError("Unknown policy change")
+        return PolicyChange(
+            id=change_id,
+            field="thresholds.T_high",
+            **{"from": 0.82, "to": 0.78},
+            direction="loosen",
+            because="x",
+            origin_feedback_ids=[],
+            status="applied",
+        )
+
+    monkeypatch.setattr(policy_service, "approve_change", p1_approve)
+    res = await actions.approve_change("u_1", "chg_2")
+    assert res == {"ok": True, "field": "thresholds.T_high", "value": 0.78, "status": "applied"}
+    assert (await actions.approve_change("u_1", "missing"))["error"] == "Unknown policy change"

@@ -87,7 +87,14 @@ export function PolicyStrip() {
   useEvents(
     (e) => {
       if (e.type === "policy_changed") {
-        const d = e.data as Partial<PolicyChange> & { new?: unknown; _id?: string };
+        const d = e.data as Partial<PolicyChange> & { new?: unknown; _id?: string; change_id?: string };
+        // P1's approve publishes only {change_id, field}: mark the known change applied.
+        if (d.change_id && d.to === undefined && d.new === undefined) {
+          setItems((prev) =>
+            prev.map((i) => (i.change && i.change.id === d.change_id ? changeItem({ ...i.change, status: "applied" }, i.ts) : i)),
+          );
+          return;
+        }
         const change = { ...d, id: d.id ?? d._id ?? `${d.field}:${e.ts}`, to: d.to ?? d.new } as PolicyChange;
         setItems((prev) => mergeItems(prev, [changeItem(change, e.ts)]));
       } else if (e.type === "pruned") {
