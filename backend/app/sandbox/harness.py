@@ -3,11 +3,15 @@ from __future__ import annotations
 import csv
 import glob
 import json
+import os
 import urllib.request
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Literal
 from urllib.parse import urlparse
+
+
+FETCH_MAP_INPUT = "__fetch_map__"
 
 
 @dataclass(slots=True)
@@ -68,8 +72,23 @@ class SandboxContext:
         allowed = {sc[4:].lower() for sc in self.scopes if sc.startswith("net:")}
         if not any(host == d or host.endswith("." + d) or d == "*" for d in allowed):
             raise PermissionError(f"network access requires the net:{host} scope")
+        recorded = self._fetch_map()
+        if recorded is not None:  # replay: recorded pages only, never the live network
+            if url not in recorded:
+                raise KeyError(f"no recorded page for {url}")
+            return recorded[url]
+        alias = os.getenv("SANDBOX_LOCALHOST_ALIAS")  # in Docker, "localhost" is the container itself
+        if alias and host in {"localhost", "127.0.0.1"}:
+            url = url.replace(host, alias, 1)
         with urllib.request.urlopen(url, timeout=10) as response:
             return response.read().decode("utf-8")
+
+    def _fetch_map(self) -> dict[str, str] | None:
+        """Gate replay of web tools: input `__fetch_map__` = JSON {url: html} of recorded pages."""
+        path = self.inputs_dir / FETCH_MAP_INPUT
+        if not path.exists():
+            return None
+        return json.loads(path.read_text(encoding="utf-8"))
 
     def write_output(self, name: str, data: Any) -> None:
         path = (self.output_dir / name).resolve()

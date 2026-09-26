@@ -57,5 +57,77 @@ async def search_tools(user_id: str, query: str, k: int = 5) -> list:
     try:
         from app.search import search_tools as p1_search  # P1
     except ImportError:
-        return []
+        return await _local_search_tools(user_id, query, k)
     return await p1_search(user_id, query, k)
+
+
+async def _local_search_tools(user_id: str, query: str, k: int) -> list[dict]:
+    """Until P1's search lands: cosine over `tools.embedding` in Python (dev only, small N)."""
+    from app import embeddings
+
+    tools = [t async for t in get_db().tools.find({"user_id": user_id, "status": {"$ne": "deprecated"},
+                                                   "embedding": {"$exists": True}},
+                                                  {"name": 1, "embedding": 1})]
+    if not tools or not query:
+        return []
+    q = (await embeddings.embed([query], "query"))[0]
+    hits = [{"tool_id": t["_id"], "name": t.get("name"), "score": embeddings.cosine(q, t["embedding"])}
+            for t in tools]
+    return sorted(hits, key=lambda h: -h["score"])[:k]
+
+
+async def recall_episodes(user_id: str, query: str, k: int = 5) -> list:
+    try:
+        from app.search import recall_episodes as p1_recall  # P1
+    except ImportError:
+        return []
+    return await p1_recall(user_id, query, k)
+
+
+async def run_by_intent(user_id: str, intent: str, inputs: dict) -> Any:
+    from app.runtime.service import run_by_intent as p1_run  # P1; no fallback, callers handle ImportError
+    return await p1_run(user_id, intent, inputs)
+
+
+async def run_tool(user_id: str, tool_id: str, params: dict, confirm: bool = False) -> Any:
+    from app.runtime.service import run_tool as p1_run_tool  # P1
+    return await p1_run_tool(user_id, tool_id, params, confirm)
+
+
+async def record_change(user_id: str, field: str, new, direction: str, because: str,
+                        origin_ids: list[str]) -> Any:
+    """P1's policy change log. Fallback writes the same shape straight into `policy`."""
+    try:
+        from app.policy.service import record_change as p1_record  # P1
+    except ImportError:
+        pass
+    else:
+        return await p1_record(user_id, field, new, direction, because, origin_ids)
+    import secrets
+    from datetime import UTC, datetime
+
+    change = {"_id": "chg_" + secrets.token_hex(4), "field": field, "new": new, "direction": direction,
+              "because": because, "origin_ids": origin_ids, "status": "applied", "ts": datetime.now(UTC)}
+    await get_db().policy.update_one({"_id": f"policy:{user_id}"},
+                                     {"$set": {field: new}, "$push": {"changes": change},
+                                      "$inc": {"version": 1}}, upsert=True)
+    await publish(user_id, "policy_changed", {k: v for k, v in change.items() if k != "ts"})
+    return change
+
+
+async def enqueue_job(type: str, payload: dict) -> str:
+    """Queue a job in `jobs` (§3.2); P1's worker dispatches it by change stream."""
+    import secrets
+    from datetime import UTC, datetime
+
+    jid = "job_" + secrets.token_hex(4)
+    await get_db().jobs.insert_one({"_id": jid, "type": type, "payload": payload, "status": "queued",
+                                    "error": None, "created_at": datetime.now(UTC)})
+    return jid
+
+
+def field(obj: Any, key: str, default: Any = None) -> Any:
+    """Read a field from a dict or a Pydantic/dataclass result (P1 returns models)."""
+    if isinstance(obj, dict):
+        return obj.get(key, default)
+    return getattr(obj, key, default)

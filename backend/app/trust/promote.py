@@ -70,8 +70,10 @@ def plan_ops(cand: dict, tool_id: str, version: int, vec: list[float], existing:
         "_id": f"{tool_id}@v{version}", "tool_id": tool_id, "user_id": cand["user_id"], "version": version,
         "code": cand["code"], "tests": cand["tests"], "params_schema": cand["params_schema"],
         "tutorial_md": cand.get("tutorial_md"), "requires": cand["requires"], "derivation": cand["derivation"],
+        "spec": spec,
         "fixtures_ref": {"evidence_session_ids": origin.get("evidence_session_ids", []),
-                         "evidence_inputs": cand.get("evidence_inputs", [])},
+                         "evidence_inputs": cand.get("evidence_inputs", []),
+                         "replay_cases": cand.get("replay_cases") or []},
         "created_from": {k: cand.get(k) for k in ("pattern_id", "idea_id") if cand.get(k)} | {"candidate_id": cand["_id"]},
         "verdict_id": cand.get("verdict_id"), "approved_at": now,
     }

@@ -79,7 +79,11 @@ async def check_unit(cand: dict) -> dict:
 async def replay_cases(cand: dict) -> list[dict]:
     """[{label, inputs: {name: path}, params, expected: {tables: {name: csv}, chart: json|None}}]
     From the evidence sessions' `artifacts` (inputs + outputs); falls back to the candidate's
-    evidence inputs + the `expected/<stem>_*` convention next to them."""
+    evidence inputs + the `expected/<stem>_*` convention next to them.
+    A candidate may carry explicit `replay_cases` (heal: old fixtures + the new failing page);
+    their `expected.tables` values may be inline rows, inputs may be literal text."""
+    if cand.get("replay_cases"):
+        return cand["replay_cases"]
     spec = cand.get("spec") or {}
     names = input_names(spec)
     sessions = []
@@ -144,14 +148,14 @@ async def check_replay(cand: dict) -> dict:
         return {"ok": False, "reason": "no evidence artifacts to replay", "cases": [], "_writes": []}
     scopes = (cand.get("requires") or {}).get("scopes", [])
     runs = await asyncio.gather(*[
-        run_in_sandbox(cand["code"], "run", c["params"], {k: str(resolve_artifact(v)) for k, v in c["inputs"].items()},
+        run_in_sandbox(cand["code"], "run", c["params"], {k: _input_value(v) for k, v in c["inputs"].items()},
                        "dry_run", scopes, timeout_s=REPLAY_TIMEOUT_S) for c in cases])
     results, writes = [], []
     for case, r in zip(cases, runs, strict=True):
         diffs = [f"run failed: {_short(r.error)}"] if not r.ok else compare_output(r.output, case["expected"])
         writes += [w.path for w in r.intended_writes]
         results.append({"label": case["label"], "ok": not diffs, "diffs": diffs[:5], "params": case["params"],
-                        "inputs": {k: Path(v).name for k, v in case["inputs"].items()},
+                        "inputs": {k: _input_label(v) for k, v in case["inputs"].items()},
                         "duration_ms": r.duration_ms,
                         "summary": (r.output or {}).get("summary") if r.ok else None})
     bad = [c for c in results if not c["ok"]]
@@ -159,17 +163,31 @@ async def check_replay(cand: dict) -> dict:
     return {"ok": not bad, "reason": reason, "cases": results, "_writes": writes}
 
 
+def _looks_like_path(v: str) -> bool:
+    return isinstance(v, str) and len(v) < 400 and "\n" not in v and resolve_artifact(v).is_file()
+
+
+def _input_value(v: str) -> str:
+    """Artifact paths resolve against the repo; anything else is literal content (e.g. a fetch map)."""
+    return str(resolve_artifact(v)) if _looks_like_path(v) else v
+
+
+def _input_label(v: str) -> str:
+    return Path(v).name if _looks_like_path(v) else f"<{len(v)} chars>"
+
+
 def compare_output(output: dict, expected: dict) -> list[str]:
     diffs = []
     got_tables = output.get("tables") or {}
-    for name, csv_path in expected.get("tables", {}).items():
+    for name, exp_rows in expected.get("tables", {}).items():
         got = got_tables.get(name)
         if got is None and len(got_tables) == 1:
             got = next(iter(got_tables.values()))
         if got is None:
             diffs.append(f"table '{name}' missing from output")
             continue
-        diffs += [f"table '{name}': {d}" for d in compare_table(got, _read_csv(csv_path))]
+        exp = exp_rows if isinstance(exp_rows, list) else _read_csv(exp_rows)
+        diffs += [f"table '{name}': {d}" for d in compare_table(got, exp)]
     if expected.get("chart"):
         exp = json.loads(resolve_artifact(expected["chart"]).read_text(encoding="utf-8"))
         diffs += [f"chart: {d}" for d in compare_chart(output.get("chart_spec"), exp)]

@@ -8,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
@@ -57,39 +58,40 @@ async def run_in_sandbox(
         bootstrap_path = root / "bootstrap.py"
         bootstrap_path.write_text(_bootstrap_source(), encoding="utf-8")
 
-        command = [
-            sys.executable,
-            str(bootstrap_path),
-            json.dumps(
-                {
-                    "tool_path": str(tool_path),
-                    "entry": entry,
-                    "params": params,
-                    "mode": mode,
-                    "scopes": scopes,
-                    "input_dir": str(input_dir),
-                    "output_dir": str(output_dir),
-                    "tools_dir": str(tools_dir),
-                }
-            ),
-        ]
-        env = {
-            "PYTHONIOENCODING": "utf-8",
-            "PYTHONPATH": os.pathsep.join([str(Path(__file__).parent), str(root), str(tools_dir)]),
-        }
+        cfg = {"entry": entry, "params": params, "mode": mode, "scopes": scopes}
+        if use_docker():
+            shutil.copyfile(Path(__file__).parent / "harness.py", root / "harness.py")
+            name = f"toolsmith-sbx-{uuid.uuid4().hex[:10]}"
+            command, env, cwd = _docker_command(root, cfg, scopes, name), None, None
+        else:
+            name = None
+            cfg |= {"tool_path": str(tool_path), "input_dir": str(input_dir),
+                    "output_dir": str(output_dir), "tools_dir": str(tools_dir)}
+            command = [sys.executable, str(bootstrap_path), json.dumps(cfg)]
+            env = {
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONPATH": os.pathsep.join([str(Path(__file__).parent), str(root), str(tools_dir)]),
+            }
+            if os.getenv("SYSTEMROOT"):  # Windows: sockets / numpy need it even for a bare env
+                env["SYSTEMROOT"] = os.environ["SYSTEMROOT"]
+            cwd = root
         try:
             # off the event loop: a 30 s tool run must not freeze the API / SSE
             proc = await asyncio.to_thread(
                 subprocess.run,
                 command,
-                cwd=root,
+                cwd=cwd,
                 env=env,
                 text=True,
+                encoding="utf-8",
                 capture_output=True,
                 timeout=timeout_s,
                 check=False,
             )
         except subprocess.TimeoutExpired as exc:
+            if name:
+                await asyncio.to_thread(subprocess.run, ["docker", "rm", "-f", name],
+                                        capture_output=True, check=False)
             return SandboxResult(
                 ok=False,
                 output={},
@@ -118,6 +120,48 @@ async def run_in_sandbox(
             error=payload.get("error"),
             duration_ms=_elapsed_ms(started),
         )
+
+
+SANDBOX_MEMORY = "512m"
+_docker_ok: bool | None = None
+
+
+def use_docker() -> bool:
+    """SANDBOX_BACKEND=docker|process|auto (default auto: Docker when the CLI and image exist).
+    The process backend is for dev machines without Docker: same contract, no OS isolation."""
+    global _docker_ok
+    backend = os.getenv("SANDBOX_BACKEND", "auto").lower()
+    if backend == "process":
+        return False
+    if backend == "docker":
+        return True
+    if _docker_ok is None:
+        _docker_ok = bool(shutil.which("docker")) and subprocess.run(
+            ["docker", "image", "inspect", _image()], capture_output=True, check=False).returncode == 0
+    return _docker_ok
+
+
+def _image() -> str:
+    return os.getenv("SANDBOX_IMAGE", "toolsmith-sandbox:latest")
+
+
+def _docker_command(root: Path, cfg: dict, scopes: list[str], name: str) -> list[str]:
+    """No network unless a net: scope, read-only root FS, tmpfs, 512 MB, non-root user.
+    Inputs and code are mounted read-only; only /job/outputs is writable."""
+    net = any(s.startswith("net:") for s in scopes)
+    cfg = cfg | {"tool_path": "/job/tool_under_test.py", "input_dir": "/job/inputs",
+                 "output_dir": "/job/outputs", "tools_dir": "/job/tools"}
+    return [
+        "docker", "run", "--rm", "--name", name,
+        "--network", "bridge" if net else "none",
+        *(["--add-host", "host.docker.internal:host-gateway", "-e", "SANDBOX_LOCALHOST_ALIAS=host.docker.internal"]
+          if net else []),
+        "--read-only", "--tmpfs", "/tmp:rw,size=64m", "--memory", SANDBOX_MEMORY, "--memory-swap", SANDBOX_MEMORY,
+        "--cpus", "1", "--pids-limit", "128", "--security-opt", "no-new-privileges", "--cap-drop", "ALL",
+        "-e", "PYTHONPATH=/job:/job/tools", "-e", "PYTHONIOENCODING=utf-8",
+        "-v", f"{root}:/job:ro", "-v", f"{root / 'outputs'}:/job/outputs:rw",
+        "-w", "/job", _image(), "python", "/job/bootstrap.py", json.dumps(cfg),
+    ]
 
 
 def _materialize_inputs(input_dir: Path, inputs: dict[str, str]) -> None:
@@ -169,8 +213,21 @@ from pathlib import Path
 from harness import SandboxContext, writes_to_dicts
 
 
+def _block_network() -> None:
+    import socket
+
+    def refuse(*_a, **_k):
+        raise PermissionError("network access requires a net:<domain> scope")
+    socket.socket.connect = refuse
+    socket.socket.connect_ex = refuse
+    socket.create_connection = refuse
+    socket.getaddrinfo = refuse
+
+
 def main() -> None:
     cfg = json.loads(sys.argv[1])
+    if not any(s.startswith("net:") for s in cfg["scopes"]):
+        _block_network()
     sys.path.insert(0, cfg["tools_dir"])
     ctx = SandboxContext(
         mode=cfg["mode"],
