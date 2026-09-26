@@ -30,9 +30,7 @@ async def verify(args):
 
     async def version():
         result = await db.command("buildInfo")
-        if tuple(result["versionArray"][:2]) < (8, 1):
-            raise RuntimeError("Use client-side RRF on this server")
-        return result["version"]
+        return f"{result['version']} (feature support tested below)"
 
     async def stream(name):
         probe = "verify_" + uuid4().hex
@@ -87,7 +85,7 @@ async def verify(args):
         await (await db.tools.aggregate(pipeline)).to_list(length=None)
         return "vector + text pipeline accepted"
 
-    await check("server >= 8.1", version)
+    await check("MongoDB server version", version)
     await check("sessions change stream", lambda: stream("sessions"))
     await check("frames change stream", lambda: stream("frames"))
     await check("GridFS", gridfs)

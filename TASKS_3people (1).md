@@ -425,7 +425,7 @@ Because nothing is cut, the priority rule in §0.1 item 9 matters: P0 first, the
 - [ ] **ALL.0.2** Everyone creates `docs/status/PN.md` with a first line `10:3x · setup · started`.
 - [x] **P1.0.1** Create repo skeleton exactly as §2, with `contracts.py` (Pydantic models for every shape in §3), all stub functions from §3.3 returning fixture data, `main.py` router auto-discovery, `worker.py` job registry, `docker-compose.yml`, `.env.example`, `fixtures/`. **Push to `main` by 10:50.**
   *Test:* `uvicorn app.main:app` starts; `GET /tools` returns the fixture; `pytest` runs (0 tests OK).
-- [ ] 🆕 **P1.0.2** Collections `frames` (regular), `ui_events`, `action_vocab`, `capture_sessions`; GridFS bucket `keyframes`; TTL 7 d on frames; contracts gain `Observation.evidence`, `ToolVersion.derivation`, `tools.lineage.calls`, `ToolSpec.derivation`; fixtures switch to canonical signatures; capture constants §3.5b in `config.py`; `POST /capture/batch` stub. **P0**
+- [x] 🆕 **P1.0.2** Collections `frames` (regular), `ui_events`, `action_vocab`, `capture_sessions`; GridFS bucket `keyframes`; TTL 7 d on frames; contracts gain `Observation.evidence`, `ToolVersion.derivation`, `tools.lineage.calls`, `ToolSpec.derivation`; fixtures switch to canonical signatures; capture constants §3.5b in `config.py`; `POST /capture/batch` stub. **P0**
   *Test:* stub accepts `fixtures/capture_batch.json` and returns a `CaptureAck`.
 - [ ] **P2.0.1** Install Docker SDK, pull `python:3.11-slim`, confirm `network_mode=none` container runs.
 - [ ] **P4.0.1** Start `data/generator/` skeleton; commit `data/ground_truth/`, `data/action_vocab_seed.json` (recordings stay git-ignored, shared by drive/USB); confirm `ffmpeg` is installed.
@@ -442,9 +442,9 @@ After P1 pushes: everyone `git pull`, then create your branch: `p1-core`, `p2-fo
 ### 5.1 Person 1 — Backend core, memory, mining, runtime, capture ingest, data & metrics
 
 #### Phase 1 (10:50–12:15)
-- [ ] ✏️ **P1.1.1** `db.py`: async PyMongo client + GridFS bucket; `scripts/init_db.py` creates all collections (incl. capture ones), `observations` as time-series (`timeField: ts`, `metaField: meta`, `expireAfterSeconds: 5184000`), TTL on `working_memory.expires_at` and `frames.expires_at`, indexes from §3.2; loads `data/action_vocab_seed.json` into `action_vocab`. Idempotent. **P0**
+- [x] ✏️ **P1.1.1** `db.py`: async PyMongo client + GridFS bucket; `scripts/init_db.py` creates all collections (incl. capture ones), `observations` as time-series (`timeField: ts`, `metaField: meta`, `expireAfterSeconds: 5184000`), TTL on `working_memory.expires_at` and `frames.expires_at`, indexes from §3.2; loads `data/action_vocab_seed.json` into `action_vocab`. Idempotent. **P0**
   *Test:* run twice, no errors; collections visible in Atlas; `action_vocab` has ~30 docs.
-- [ ] ✏️ **P1.1.2** Verify Atlas tier features and write results in `docs/status/P1.md`: `db.version()` ≥ 8.1, `$rankFusion` with `$vectorSearch` works, how many search indexes the tier allows (decides `frames_vec`), change stream on `sessions` and `frames` works, Voyage multimodal model name + dimension, GridFS write + read round trip. **P0**
+- [ ] ✏️ **P1.1.2** Verify Atlas features and write results in `docs/status/P1.md`: report `db.version()`; directly test `$rankFusion` with `$vectorSearch`; determine search-index quota (decides `frames_vec`); verify change streams on `sessions` and `frames`; confirm Voyage multimodal model + dimension; test GridFS write/read. **P0**
   *Test:* a tiny script prints OK/FAIL for each.
 - [ ] ✏️ **P1.1.3** Create search indexes in the §3.2 priority order: `tools_vec`, `sessions_vec`, `tools_text`, then `frames_vec` and `patterns_vec` only if the tier allows. All vector indexes filter on `user_id` (+ `status` where relevant). **P0**
   *Test:* indexes show READY in Atlas; status file says which ones were skipped.
@@ -471,7 +471,7 @@ After P1 pushes: everyone `git pull`, then create your branch: `p1-core`, `p2-fo
 #### ⇄ I-1 (12:15–12:45): extension check with everyone, then I-1a — see §6.2
 
 #### Phase 2 (12:45–14:00)
-- [ ] **P1.2.1** `search.py`: `search_tools` via `$rankFusion` (vector + text), filtered by `user_id` + `status: active`; client-side RRF fallback if `$rankFusion` failed in P1.1.2; `recall_episodes` via `$vectorSearch` on `sessions`; structural query on `signature`. **P0**
+- [x] **P1.2.1** `search.py`: `search_tools` via `$rankFusion` (vector + text), filtered by `user_id` + `status: active`; client-side RRF fallback if `$rankFusion` fails; `recall_episodes` via `$vectorSearch` on `sessions`; exact structural query on `signature_seq`. **P0**
   *Test:* insert 3 fake tools → a paraphrased query ranks the right one first.
 - [ ] ✏️ **P1.2.4** `worker.py`: change streams on `sessions` (closed → queue mine), `jobs` (dispatch to registered handler), `runs` (call `trust.check_drift` hook), **`frames` (new frames → queue one `interpret` job per session, debounced ~5 s)**. **P0**
   *Test:* inserting a forge job calls the registered handler (P2 stub logs it); inserting 3 frames queues exactly 1 interpret job.

@@ -340,6 +340,174 @@ async def test_search_index_budget_and_no_false_ready():
         await apply_indexes(db, plans, budget=1, timeout=0)
 
 
+async def test_search_tools_uses_rank_fusion_and_tenant_filters(monkeypatch):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    from app import search
+
+    pipelines = []
+
+    class Cursor:
+        async def to_list(self, length):
+            return [{"tool_id": "tool-1", "name": "Weekly report", "score": 0.04}]
+
+    async def aggregate(pipeline):
+        pipelines.append(pipeline)
+        return Cursor()
+
+    collection = SimpleNamespace(aggregate=aggregate)
+    db = SimpleNamespace(tools=collection)
+    monkeypatch.setattr(search, "get_settings", lambda: SimpleNamespace(stub_mode=False))
+    monkeypatch.setattr(search, "embed", AsyncMock(return_value=[[0.1, 0.2]]))
+    monkeypatch.setattr(search, "get_db", lambda: db)
+
+    hits = await search.search_tools("tenant-1", "summarize weekly sales", k=3)
+
+    assert hits[0].tool_id == "tool-1"
+    assert hits[0].score == 0.04
+    fusion = pipelines[0][0]["$rankFusion"]["input"]["pipelines"]
+    vector = fusion["vector"][0]["$vectorSearch"]
+    assert vector["filter"] == {"user_id": "tenant-1", "status": "active"}
+    text_filter = fusion["text"][0]["$search"]["compound"]["filter"]
+    assert text_filter == [
+        {"equals": {"path": "user_id", "value": "tenant-1"}},
+        {"equals": {"path": "status", "value": "active"}},
+    ]
+
+
+async def test_search_tools_falls_back_to_client_rrf(monkeypatch):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    from app import search
+    from pymongo.errors import OperationFailure
+
+    calls = []
+
+    class Cursor:
+        def __init__(self, rows):
+            self.rows = rows
+
+        async def to_list(self, length):
+            return self.rows
+
+    async def aggregate(pipeline):
+        calls.append(pipeline)
+        if len(calls) == 1:
+            raise OperationFailure("$rankFusion is unavailable")
+        if "$vectorSearch" in pipeline[0]:
+            return Cursor(
+                [
+                    {"tool_id": "tool-b", "name": "B"},
+                    {"tool_id": "tool-a", "name": "A"},
+                ]
+            )
+        return Cursor(
+            [
+                {"tool_id": "tool-b", "name": "B"},
+                {"tool_id": "tool-a", "name": "A"},
+            ]
+        )
+
+    db = SimpleNamespace(tools=SimpleNamespace(aggregate=aggregate))
+    monkeypatch.setattr(search, "get_settings", lambda: SimpleNamespace(stub_mode=False))
+    monkeypatch.setattr(search, "embed", AsyncMock(return_value=[[0.1, 0.2]]))
+    monkeypatch.setattr(search, "get_db", lambda: db)
+
+    hits = await search.search_tools("tenant-1", "weekly report", k=2)
+
+    assert [hit.tool_id for hit in hits] == ["tool-b", "tool-a"]
+    assert len(calls) == 3
+    assert calls[1][0]["$vectorSearch"]["filter"] == {
+        "user_id": "tenant-1",
+        "status": "active",
+    }
+    assert calls[2][0]["$search"]["compound"]["filter"] == [
+        {"equals": {"path": "user_id", "value": "tenant-1"}},
+        {"equals": {"path": "status", "value": "active"}},
+    ]
+
+
+async def test_recall_episodes_uses_scoped_vector_search(monkeypatch):
+    from datetime import datetime, timezone
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    from app import search
+
+    calls = []
+
+    class Cursor:
+        async def to_list(self, length):
+            return [
+                {
+                    "session_id": "session-1",
+                    "date": datetime(2026, 9, 26, tzinfo=timezone.utc),
+                    "intent_summary": "Weekly report",
+                    "minutes": 12,
+                    "tokens": 30,
+                    "score": 0.9,
+                }
+            ]
+
+    async def aggregate(pipeline):
+        calls.append(pipeline)
+        return Cursor()
+
+    db = SimpleNamespace(sessions=SimpleNamespace(aggregate=aggregate))
+    monkeypatch.setattr(search, "get_settings", lambda: SimpleNamespace(stub_mode=False))
+    monkeypatch.setattr(search, "embed", AsyncMock(return_value=[[0.1, 0.2]]))
+    monkeypatch.setattr(search, "get_db", lambda: db)
+
+    hits = await search.recall_episodes("tenant-1", "weekly report", k=3)
+
+    assert hits[0].session_id == "session-1"
+    vector_stage = calls[0][0]["$vectorSearch"]
+    assert vector_stage["index"] == "sessions_vec"
+    assert vector_stage["filter"] == {"user_id": "tenant-1"}
+
+
+async def test_recall_episodes_supports_exact_signature_sequences(monkeypatch):
+    from datetime import datetime, timezone
+    from types import SimpleNamespace
+
+    from app import search
+
+    calls = []
+
+    class Cursor:
+        async def to_list(self, length):
+            return [
+                {
+                    "session_id": "session-1",
+                    "date": datetime(2026, 9, 26, tzinfo=timezone.utc),
+                    "intent_summary": "Weekly report",
+                    "minutes": 12,
+                    "tokens": 30,
+                    "score": 1.0,
+                }
+            ]
+
+    async def aggregate(pipeline):
+        calls.append(pipeline)
+        return Cursor()
+
+    db = SimpleNamespace(sessions=SimpleNamespace(aggregate=aggregate))
+    monkeypatch.setattr(search, "get_settings", lambda: SimpleNamespace(stub_mode=False))
+    monkeypatch.setattr(search, "get_db", lambda: db)
+
+    hits = await search.recall_episodes(
+        "tenant-1", "", k=3, signature=["file.open:xlsx", "table.pivot:2col"]
+    )
+
+    assert hits[0].session_id == "session-1"
+    assert calls[0][0]["$match"] == {
+        "user_id": "tenant-1",
+        "signature_seq": ["file.open:xlsx", "table.pivot:2col"],
+    }
+
+
 async def test_reset_is_scoped_to_demo_user():
     from scripts.seed import reset_live_user
 
