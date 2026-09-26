@@ -174,6 +174,23 @@ function CardView({ card }: { card: ChatCard }) {
           )}
         </div>
       );
+    case "tool_hits":
+      return (
+        <div className={shell}>
+          <div className="mb-1 text-xs text-muted-foreground">Matching tools (hybrid search)</div>
+          <ul className="flex flex-col gap-1">
+            {card.hits.map((hit) => (
+              <li key={hit.tool_id}>
+                <Link href={`/tools/${hit.tool_id}`} className="flex items-center gap-2 hover:underline">
+                  <Wrench className="size-3.5 text-muted-foreground" />
+                  <span className="flex-1 font-mono text-xs">{hit.name}()</span>
+                  <span className="text-xs text-muted-foreground tabular-nums">{hit.score.toFixed(2)}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      );
     case "idea":
       return (
         <div className={shell}>
