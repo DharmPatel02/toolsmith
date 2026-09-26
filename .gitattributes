@@ -1,0 +1,7 @@
+# Binary artifacts: never convert line endings (PDFs here are mostly ASCII, so git guesses "text").
+*.pdf binary
+*.xlsx binary
+*.webp binary
+*.png binary
+*.jpg binary
+*.mp4 binary
