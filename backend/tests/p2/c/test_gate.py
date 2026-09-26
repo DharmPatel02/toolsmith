@@ -101,7 +101,20 @@ async def test_duplicate_and_scope_violations(env, monkeypatch):
     spec = normalize_spec(CANNED_SPEC, PATTERN_UC1)
     v, _ = await _gate(db, _candidate(requires={**spec["requires"], "scopes": []}))
     assert not v["checks"]["duplicate"]["ok"] and "sales_rollup_v0" in v["reason"]
+    assert v["checks"]["duplicate"]["decision"] == "merge"
     assert not v["checks"]["side_effects"]["ok"] and "write:outputs" in v["reason"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("score,decision,ok", [(0.85, "adapt", True), (0.40, "new", True), (0.95, "merge", False)])
+async def test_dedupe_decision_is_recorded(env, monkeypatch, score, decision, ok):
+    async def hit(user_id, query, k=5):
+        return [{"tool_id": "t_other", "name": "regional_report", "score": score}]
+    monkeypatch.setattr(deps, "search_tools", hit)
+    dup = await gate.check_duplicate(_candidate())
+    assert dup["decision"] == decision and dup["ok"] is ok
+    # a heal re-gating its own tool is never a duplicate of itself
+    assert (await gate.check_duplicate(_candidate(tool_id="t_other")))["decision"] == "new"
 
 
 @pytest.mark.asyncio

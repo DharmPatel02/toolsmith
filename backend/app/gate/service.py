@@ -4,7 +4,8 @@
 (b) replay      each evidence session's real inputs -> tool -> compared with that session's
                 real outputs: tables exact (float tolerance), charts structural
 (c) side_effects dry-run intended writes must be covered by the declared scopes
-(d) duplicate   an existing tool that already does this (search_tools score >= merge_similarity)
+(d) duplicate   dedupe decision via search_tools: merge (>= merge_similarity, fails) ·
+                adapt (>= T_high, passes, similar tool recorded) · new
 """
 from __future__ import annotations
 
@@ -25,6 +26,7 @@ from app.sandbox import run_in_sandbox
 
 FLOAT_TOL = 0.01
 DEFAULT_MERGE_SIMILARITY = 0.90
+DEFAULT_T_HIGH = 0.82
 UNIT_TIMEOUT_S = 60
 REPLAY_TIMEOUT_S = 60  # cold pandas import in a fresh process is slow on a loaded laptop
 
@@ -51,7 +53,8 @@ async def run_gate(candidate_id: str) -> dict:
                                    {"$set": {"status": verdict["decision"], "verdict_id": verdict["_id"]}})
     await deps.publish(cand["user_id"], "gate_passed" if not failed else "gate_failed", {
         "candidate_id": candidate_id, "verdict_id": verdict["_id"], "reason": verdict["reason"],
-        "checks": {n: c["ok"] for n, c in checks.items()},
+        "checks": {n: c["ok"] for n, c in checks.items()}, "dedupe": dup["decision"],
+        "similar_tool": dup["top_hit"] if dup["decision"] != "new" else None,
         "replay_cases": [{"label": c["label"], "ok": c["ok"]} for c in replay["cases"]]})
     return verdict
 
@@ -271,18 +274,24 @@ def check_side_effects(cand: dict, writes: list[str]) -> dict:
 async def check_duplicate(cand: dict) -> dict:
     spec = cand.get("spec") or {}
     query = " ".join(filter(None, [spec.get("title"), spec.get("purpose"), " ".join(spec.get("keywords", []))]))
-    threshold = await _merge_similarity(cand["user_id"])
+    threshold, t_high = await _dedupe_thresholds(cand["user_id"])
     hits = await deps.search_tools(cand["user_id"], query, 3) if query else []
     top = hits[0] if hits else None
     top_d = _hit_dict(top) if top else None
-    is_dup = bool(top_d and top_d["score"] >= threshold and top_d["tool_id"] != cand.get("tool_id"))
-    return {"ok": not is_dup, "reason": f"duplicate of {top_d['name']} (score {top_d['score']:.2f})" if is_dup else "",
-            "top_hit": top_d, "threshold": threshold}
+    other = bool(top_d and top_d["tool_id"] != cand.get("tool_id"))  # a heal's own tool is not a duplicate
+    score = top_d["score"] if other else 0.0
+    # merge: same tool already exists (fail, merge path) · adapt: a close tool exists, new one
+    # still allowed (recorded so the UI can say "similar to Y") · new: nothing close
+    decision = "merge" if score >= threshold else "adapt" if score >= t_high else "new"
+    return {"ok": decision != "merge", "decision": decision,
+            "reason": f"duplicate of {top_d['name']} (score {score:.2f})" if decision == "merge" else "",
+            "top_hit": top_d, "threshold": threshold, "adapt_threshold": t_high}
 
 
-async def _merge_similarity(user_id: str) -> float:
+async def _dedupe_thresholds(user_id: str) -> tuple[float, float]:
     pol = await deps.get_db().policy.find_one({"_id": f"policy:{user_id}"})
-    return float(((pol or {}).get("thresholds") or {}).get("merge_similarity", DEFAULT_MERGE_SIMILARITY))
+    th = (pol or {}).get("thresholds") or {}
+    return float(th.get("merge_similarity", DEFAULT_MERGE_SIMILARITY)), float(th.get("T_high", DEFAULT_T_HIGH))
 
 
 def _hit_dict(h) -> dict:
