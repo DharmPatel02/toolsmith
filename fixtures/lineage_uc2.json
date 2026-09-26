@@ -1,0 +1,21 @@
+{
+  "calls": [
+    {
+      "tool_id": "tool_extract",
+      "name": "extract_method",
+      "version": 1,
+      "code": "def run(ctx, **params):\n    return {\"parameters\": {}}\n",
+      "depth": 0
+    },
+    {
+      "tool_id": "tool_sim",
+      "name": "run_sim",
+      "version": 1,
+      "code": "def run(ctx, **params):\n    return {\"summary\": \"fixture\"}\n",
+      "depth": 0
+    }
+  ],
+  "merged_from": [],
+  "merged_into": null,
+  "dependents": []
+}

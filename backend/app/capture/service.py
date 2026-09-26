@@ -7,6 +7,7 @@ from urllib.parse import urlsplit
 
 from PIL import Image, UnidentifiedImageError
 
+from app.capture.state import paused_users
 from app.config import get_settings
 from app.contracts import CaptureAck, CaptureBatch
 from app.fixtures import require_demo_user
@@ -39,6 +40,8 @@ async def ingest_capture_batch(user_id: str, batch: CaptureBatch) -> CaptureAck:
     if batch.user_id != user_id:
         raise PermissionError("Capture batch user does not match request user")
     validate_batch(batch)
+    if user_id in paused_users:
+        return CaptureAck(ui_events=0, frames_kept=0, frames_dropped=len(batch.frames), paused=True)
     return CaptureAck(
         ui_events=len(batch.events), frames_kept=len(batch.frames), frames_dropped=0, paused=False
     )

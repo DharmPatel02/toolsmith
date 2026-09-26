@@ -1,0 +1,36 @@
+{
+  "conversation_id": "conversation_fixture",
+  "reply": "Fixture: this workflow repeated on three Mondays.",
+  "tool_calls": [],
+  "cards": [
+    {
+      "type": "episodes",
+      "episodes": [
+        {
+          "session_id": "s_w1_mon",
+          "date": "2026-09-07T13:00:00Z",
+          "intent_summary": "Build weekly sales dashboard",
+          "minutes": 9,
+          "tokens": 18000,
+          "score": 0.95
+        },
+        {
+          "session_id": "s_w2_mon",
+          "date": "2026-09-14T13:00:00Z",
+          "intent_summary": "Build weekly sales dashboard",
+          "minutes": 9,
+          "tokens": 18000,
+          "score": 0.95
+        },
+        {
+          "session_id": "s_w3_mon",
+          "date": "2026-09-21T13:00:00Z",
+          "intent_summary": "Build weekly sales dashboard",
+          "minutes": 9,
+          "tokens": 18000,
+          "score": 0.95
+        }
+      ]
+    }
+  ]
+}

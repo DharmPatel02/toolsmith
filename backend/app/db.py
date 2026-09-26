@@ -17,7 +17,9 @@ def get_client() -> AsyncMongoClient:
         settings = get_settings()
         if not settings.mongodb_uri:
             raise RuntimeError("Set MONGODB_URI in .env before accessing Atlas")
-        _client = AsyncMongoClient(settings.mongodb_uri, serverSelectionTimeoutMS=5000)
+        _client = AsyncMongoClient(
+            settings.mongodb_uri, serverSelectionTimeoutMS=5000, tz_aware=True
+        )
     return _client
 
 
