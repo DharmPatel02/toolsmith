@@ -4,6 +4,7 @@ Steps (each reported; a missing optional input is skipped with a reason, never f
   1. init_db            idempotent collections / indexes / action_vocab seed        (P1 script)
   2. seed history       POST data/seed/history.jsonl via the API, --reset           (P1 script)
   3. screen frames      replay the 3 UC1 recordings -> /capture/batch, backdated     (P2 script)
+     synth frames       Playwright walks the UC3/UC2 mock-site flows -> backdated frames (P3 script)
   4. cached generations warm the LLM cache: forge UC1, heal UC3, frame labels     (P2 script)
   5. mock site v1       POST /demo/mocksite/v1
   6. freeze vocab       VOCAB_FROZEN=1 in .env (the interpreter reads it; restart api/worker)
@@ -19,6 +20,7 @@ import argparse
 import hashlib
 import json
 import os
+import shutil
 import subprocess
 import sys
 import urllib.error
@@ -28,7 +30,16 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SNAPSHOT = ROOT / ".cache" / "demo_reset_snapshot.json"
 RECORDINGS = ROOT / "data" / "recordings" / "uc1"
-STEPS = ("init_db", "seed", "frames", "precompute", "mocksite", "freeze", "snapshot")
+STEPS = (
+    "init_db",
+    "seed",
+    "frames",
+    "synth_frames",
+    "precompute",
+    "mocksite",
+    "freeze",
+    "snapshot",
+)
 
 
 def http(api: str, method: str, path: str) -> dict | list:
@@ -113,6 +124,21 @@ def main(args: argparse.Namespace) -> int:
         ok, tail = run(["scripts/video_to_frames.py", "--uc1", str(RECORDINGS), "--api-base", api])
         return ("OK" if ok else "FAIL"), tail
 
+    def synth_frames():
+        node = shutil.which("node")
+        if not node or not (ROOT / "web" / "node_modules" / "playwright").exists():
+            return "SKIP", "needs node + web/node_modules/playwright (npm install in web/)"
+        proc = subprocess.run(
+            [node, "scripts/synth_frames.mjs", "--api", api],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=False,
+        )
+        tail = (proc.stdout + proc.stderr).strip().splitlines()[-1:]
+        return ("OK" if proc.returncode == 0 else "FAIL"), " | ".join(tail)
+
     def precompute():
         ok, tail = run(["scripts/precompute.py"])
         return ("OK" if ok else "FAIL"), tail
@@ -144,6 +170,7 @@ def main(args: argparse.Namespace) -> int:
     )
     step("seed", seed)
     step("frames", frames)
+    step("synth_frames", synth_frames)
     step("precompute", precompute)
     step("mocksite", mocksite)
     step("freeze", freeze)
