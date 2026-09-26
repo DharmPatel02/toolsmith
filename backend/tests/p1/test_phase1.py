@@ -300,7 +300,9 @@ async def test_mongo_adapter_keeps_user_filters_and_normalized_data():
     db.observations.insert_many = AsyncMock()
     store = MongoStore(db)
     assert await store.observations("u_1") == []
-    db.observations.find.assert_called_once_with({"meta.user_id": "u_1"}, {"_id": 0})
+    db.observations.find.assert_called_once_with(
+        {"meta.user_id": "u_1"}, {"_id": 0, "capture_key": 0}
+    )
     normalized = normalize(event(NOW))
     await store.insert_observations("u_1", [normalized])
     written = db.observations.insert_many.await_args.args[0][0]
