@@ -1,0 +1,24 @@
+{
+  "kind": "bar",
+  "series": [
+    {
+      "region": "East",
+      "revenue": 2365.2
+    },
+    {
+      "region": "North",
+      "revenue": 1325.0
+    },
+    {
+      "region": "South",
+      "revenue": 1112.4
+    },
+    {
+      "region": "West",
+      "revenue": 920.35
+    }
+  ],
+  "title": "Revenue by Region",
+  "x": "Region",
+  "y": "Revenue"
+}
