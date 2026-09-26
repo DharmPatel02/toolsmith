@@ -1,0 +1,62 @@
+[
+  {
+    "sku": "PW-1001",
+    "name": "Aeropress Coffee Maker",
+    "price": 39.95
+  },
+  {
+    "sku": "PW-1002",
+    "name": "Burr Grinder Pro",
+    "price": 149.0
+  },
+  {
+    "sku": "PW-1003",
+    "name": "Gooseneck Kettle",
+    "price": 64.5
+  },
+  {
+    "sku": "PW-2001",
+    "name": "Noise-Cancelling Headphones",
+    "price": 279.99
+  },
+  {
+    "sku": "PW-2002",
+    "name": "Bluetooth Speaker Mini",
+    "price": 49.99
+  },
+  {
+    "sku": "PW-2003",
+    "name": "Studio Monitor Pair",
+    "price": 399.0
+  },
+  {
+    "sku": "PW-3001",
+    "name": "Mechanical Keyboard",
+    "price": 129.0
+  },
+  {
+    "sku": "PW-3002",
+    "name": "Ergonomic Mouse",
+    "price": 59.99
+  },
+  {
+    "sku": "PW-3003",
+    "name": "27in 4K Monitor",
+    "price": 349.99
+  },
+  {
+    "sku": "PW-3004",
+    "name": "Standing Desk Frame",
+    "price": 489.0
+  },
+  {
+    "sku": "PW-4001",
+    "name": "Trail Running Shoes",
+    "price": 119.95
+  },
+  {
+    "sku": "PW-4002",
+    "name": "Insulated Water Bottle",
+    "price": 29.0
+  }
+]

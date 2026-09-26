@@ -1,0 +1,10 @@
+body{font-family:system-ui,sans-serif;margin:0;background:#f8fafc;color:#0f172a}
+.site-header{display:flex;gap:24px;align-items:center;padding:12px 24px;background:#1e3a8a;color:#fff}
+.site-header a{color:#fff;margin-right:12px}.brand{font-weight:700;font-size:20px}
+.search{margin-left:auto;display:flex;gap:6px;align-items:center}
+main{max-width:900px;margin:24px auto;padding:0 16px}
+.product-list{list-style:none;padding:0;display:grid;gap:10px}
+.product{display:grid;grid-template-columns:1fr auto auto auto auto;gap:16px;align-items:center;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:12px}
+.product-name{font-size:16px;margin:0}.price{font-weight:700;color:#15803d}.vendor,.stock{color:#64748b;font-size:13px}
+button{padding:6px 12px;border-radius:6px;border:1px solid #1e3a8a;background:#fff;cursor:pointer}
+footer{text-align:center;color:#94a3b8;padding:24px}

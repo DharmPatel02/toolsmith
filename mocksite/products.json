@@ -1,0 +1,14 @@
+[
+  {"sku": "PW-1001", "name": "Aeropress Coffee Maker", "vendor": "BrewCo", "category": "Kitchen", "price": 39.95, "stock": 42},
+  {"sku": "PW-1002", "name": "Burr Grinder Pro", "vendor": "BrewCo", "category": "Kitchen", "price": 149.00, "stock": 7},
+  {"sku": "PW-1003", "name": "Gooseneck Kettle", "vendor": "HeatWorks", "category": "Kitchen", "price": 64.50, "stock": 18},
+  {"sku": "PW-2001", "name": "Noise-Cancelling Headphones", "vendor": "SoundLab", "category": "Audio", "price": 279.99, "stock": 11},
+  {"sku": "PW-2002", "name": "Bluetooth Speaker Mini", "vendor": "SoundLab", "category": "Audio", "price": 49.99, "stock": 63},
+  {"sku": "PW-2003", "name": "Studio Monitor Pair", "vendor": "Waveform", "category": "Audio", "price": 399.00, "stock": 3},
+  {"sku": "PW-3001", "name": "Mechanical Keyboard", "vendor": "KeyForge", "category": "Office", "price": 129.00, "stock": 25},
+  {"sku": "PW-3002", "name": "Ergonomic Mouse", "vendor": "KeyForge", "category": "Office", "price": 59.99, "stock": 0},
+  {"sku": "PW-3003", "name": "27in 4K Monitor", "vendor": "Pixelate", "category": "Office", "price": 349.99, "stock": 9},
+  {"sku": "PW-3004", "name": "Standing Desk Frame", "vendor": "LiftCo", "category": "Office", "price": 489.00, "stock": 4},
+  {"sku": "PW-4001", "name": "Trail Running Shoes", "vendor": "Stride", "category": "Outdoor", "price": 119.95, "stock": 31},
+  {"sku": "PW-4002", "name": "Insulated Water Bottle", "vendor": "Stride", "category": "Outdoor", "price": 29.00, "stock": 120}
+]
