@@ -6,7 +6,37 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(ROOT))
 
-from scripts.video_to_frames import build_capture_batches
+import shutil
+import subprocess
+
+import pytest
+
+from scripts.video_to_frames import build_capture_batches, extract_keyframes, last_mondays, uc1_plan
+
+
+def test_last_mondays_and_uc1_plan(tmp_path):
+    today = datetime(2026, 9, 26, tzinfo=UTC)  # a Saturday
+    assert last_mondays(3, today) == [datetime(2026, 9, 7, tzinfo=UTC), datetime(2026, 9, 14, tzinfo=UTC),
+                                      datetime(2026, 9, 21, tzinfo=UTC)]
+    assert last_mondays(1, datetime(2026, 9, 21, 15, tzinfo=UTC)) == [datetime(2026, 9, 14, tzinfo=UTC)]
+    for n in (3, 1, 2):
+        (tmp_path / f"week{n}.mp4").write_bytes(b"x")
+    (tmp_path / "ground_truth.mp4").write_bytes(b"x")  # not a UC1 week recording
+    plan = uc1_plan(tmp_path, today)
+    assert [(p["video"].name, p["session_id"], p["monday"].day) for p in plan] == [
+        ("week1.mp4", "s_w1_mon", 7), ("week2.mp4", "s_w2_mon", 14), ("week3.mp4", "s_w3_mon", 21)]
+
+
+@pytest.mark.skipif(not shutil.which("ffmpeg"), reason="ffmpeg not installed")
+def test_extract_keyframes_from_a_real_video(tmp_path):
+    video = tmp_path / "week1.mp4"
+    # 3 s of test pattern that changes colour every second -> scene cuts
+    subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i",
+                    "color=c=red:s=640x360:d=1,format=yuv420p[a];color=c=blue:s=640x360:d=1,format=yuv420p[b];"
+                    "color=c=green:s=640x360:d=1,format=yuv420p[c];[a][b][c]concat=n=3:v=1:a=0",
+                    str(video)], check=True)
+    frames = extract_keyframes(video, tmp_path / "kf")
+    assert 2 <= len(frames) <= 4 and all(f.suffix == ".webp" and f.stat().st_size > 0 for f in frames)
 
 
 def test_capture_batch_body_shape_and_strictly_increasing_ts(tmp_path):
@@ -33,7 +63,8 @@ def test_capture_batch_body_shape_and_strictly_increasing_ts(tmp_path):
 
     timestamps = []
     for i, frame in enumerate(body["frames"]):
-        assert set(frame) == {"client_id", "ts", "trigger", "url_template", "image_webp_b64"}
+        assert set(frame) == {"client_id", "ts", "trigger", "app", "window_title", "url_template", "image_webp_b64"}
+        assert frame["app"] == "excel"
         assert frame["client_id"] == f"uc1-week1:{i:05d}"
         assert frame["trigger"] == "video_replay"
         assert frame["url_template"] is None
