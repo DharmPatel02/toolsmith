@@ -99,7 +99,7 @@ async def refresh_tutorial(cid: str, verdict: dict) -> None:
     if not cases:
         return
     ex = cases[-1]
-    example = {"inputs": {**{k: Path(v).name for k, v in ex["inputs"].items()}, **ex["params"]},
+    example = {"inputs": {**ex["params"], **ex["inputs"]},  # real file names over the input handles
                "result": ex.get("summary"), "source": f"replay of {ex['label']}"}
     try:
         md, _ = await write_tutorial(cand["spec"], example)

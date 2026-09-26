@@ -162,7 +162,7 @@ def uc1_plan(video_dir: Path, today: datetime | None = None) -> list[dict[str, A
         raise FileNotFoundError(f"no week*.mp4/mov/mkv/webm recordings in {video_dir}")
     mondays = last_mondays(len(videos), today)
     return [{"video": v, "session_id": f"s_w{i}_mon", "monday": m, "window_title": f"sales_w{i}.xlsx - Excel"}
-            for i, (v, m) in enumerate(zip(videos, mondays), start=1)]
+            for i, (v, m) in enumerate(zip(videos, mondays, strict=True), start=1)]
 
 
 def main() -> None:

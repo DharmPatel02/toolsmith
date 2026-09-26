@@ -171,7 +171,8 @@ async def _local_run_by_intent(user_id: str, intent: str, inputs: dict) -> dict:
     tool = await db.tools.find_one({"_id": top["tool_id"]})
     tv = await db.tool_versions.find_one({"_id": f"{tool['_id']}@v{tool['active_version']}"})
     files = set(input_names({"params_schema": tv["params_schema"]}))
-    r = await run_in_sandbox(tv["code"], "run", {k: v for k, v in inputs.items() if k not in files},
+    params = {k: (k if k in files else v) for k, v in inputs.items()}  # file params = input handles
+    r = await run_in_sandbox(tv["code"], "run", params,
                              {k: str(resolve_artifact(v)) for k, v in inputs.items() if k in files}, "dry_run",
                              tv["requires"].get("scopes", []), timeout_s=60)
     return {"route": "found", "tool_id": tool["_id"], "name": tool.get("name"), "score": top.get("score"),

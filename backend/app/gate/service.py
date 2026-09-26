@@ -129,7 +129,8 @@ def _table_name(path: str) -> str:
 def _params_for(spec: dict, input_path: str, session_params: dict) -> dict:
     params = {}
     for name, p in spec.get("params_schema", {}).get("properties", {}).items():
-        if p.get("format") == "file":
+        if p.get("format") == "file":  # the value is the input's handle: read_table(params["file"]) works
+            params[name] = name
             continue
         if name in session_params:
             params[name] = session_params[name]

@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import os
+import re
 from datetime import UTC, datetime
 
 from app import embeddings
@@ -83,6 +84,17 @@ def _vocab_text(d: dict) -> str:
 def _proposal_text(s: dict) -> str:
     target = (s.get("target") or {}).get("name") or ""
     return f"{s['proposed_verb'].replace('.', ' ')} {target}".strip()
+
+
+def fill_ext(step: dict) -> dict:
+    """VLMs often name the file (target.name "sales_w1.xlsx") but leave `ext` out of args_shape;
+    file.* signatures need it (file.open:xlsx), so take it from the file name."""
+    shape = dict(step.get("args_shape") or {})
+    name = str((step.get("target") or {}).get("name") or "")
+    if step.get("verb", "").startswith("file.") and not (shape.get("ext") or shape.get("extension")) \
+            and re.search(r"\.[A-Za-z0-9]{2,5}$", name):
+        shape["ext"] = name.rsplit(".", 1)[1].lower()
+    return shape
 
 
 def signature(verb: str, args_shape: dict) -> str:

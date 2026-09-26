@@ -10,7 +10,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     MPLCONFIGDIR=/tmp
 
 RUN python -m pip install --no-cache-dir \
-        "pandas==2.2.*" "numpy<2.2" "openpyxl==3.1.*" "beautifulsoup4==4.12.*" "lxml==5.*" "plotly==5.*"
+        "pandas==2.2.*" "numpy<2.2" "openpyxl==3.1.*" "beautifulsoup4==4.12.*" "lxml>=5" "plotly>=5.20"
 
 RUN useradd --create-home --shell /usr/sbin/nologin sandbox
 WORKDIR /job

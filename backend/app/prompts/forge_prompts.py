@@ -64,6 +64,9 @@ CODE contract:
 - A module with a top-level `def run(ctx, **params) -> dict`. Helpers are fine.
 - Read inputs ONLY through ctx: `ctx.read_table(name)` -> pandas DataFrame (xlsx/csv),
   `ctx.read_text(name)`, `ctx.fetch(url)` (needs scope "net:<domain>"). No open(), no os, no files.
+- File params (format "file") are mounted inputs: their value is the input's name, so
+  `ctx.read_table(params["file"])` and `ctx.read_table("file")` are the same. Other params
+  (e.g. week) arrive as plain values in `params`. Never open paths yourself.
 - Write files ONLY with `ctx.write_output(name, content_str)`.
 - Allowed imports: {", ".join(sorted(ALLOWED_IMPORTS))}. Nothing else.
 - Return {{"summary": str, "tables": {{name: list of row dicts}}, "chart_spec": {{"type": "bar|line",

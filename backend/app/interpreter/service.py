@@ -86,7 +86,8 @@ async def interpret_session_detailed(user_id: str, session_id: str) -> tuple[lis
     # D — vocab + canonical signatures
     steps = await vocab.canonicalize(steps, voc)
     for s in steps:
-        s["signature"] = vocab.signature(s["verb"], s.get("args_shape") or {})
+        s["args_shape"] = vocab.fill_ext(s)
+        s["signature"] = vocab.signature(s["verb"], s["args_shape"])
         s["label_source"] = source
 
     by_frame: dict[str, list[dict]] = {}

@@ -122,7 +122,7 @@ async def label_videos(db, relabel: bool) -> list[dict]:
                                             "(run scripts/video_to_frames.py --uc1 data/recordings/uc1 first)"}]
     mondays = last_mondays(len(sessions))
     rows = []
-    for sdir, monday in zip(sessions, mondays):
+    for sdir, monday in zip(sessions, mondays, strict=True):
         sid = sdir.name
         target = interp.labels_dir() / f"{sid}.json"
         if target.exists() and not relabel:

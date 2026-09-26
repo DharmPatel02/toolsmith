@@ -163,6 +163,9 @@ def test_fallback_signatures():
     assert vocab.fallback_signature("table.pivot", {"rows": "Region", "values": "Amount"}) == "table.pivot:2col"
     assert vocab.fallback_signature("file.open", {"ext": ".XLSX"}) == "file.open:xlsx"
     assert vocab.fallback_signature("chart.bar", {"x": "Region"}) == "chart.bar"
+    # live VLM finding: file named in target, ext missing from args_shape
+    assert vocab.fill_ext({"verb": "file.open", "target": {"name": "sales_w1.xlsx"}, "args_shape": {}}) == {"ext": "xlsx"}
+    assert vocab.fill_ext({"verb": "table.pivot", "target": {"name": "a.xlsx"}, "args_shape": {}}) == {}
 
 
 @pytest.mark.skipif(not os.getenv("LLM_VISION_MODEL"), reason="no LLM_VISION_MODEL in .env")

@@ -1,0 +1,12 @@
+.env
+.cache/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.venv/
+data/recordings/**/*.mp4
+data/recordings/**/*.mov
+data/recordings/**/*.mkv
+data/recordings/**/*.webm
+data/recordings/uc1/keyframes/
+node_modules/
