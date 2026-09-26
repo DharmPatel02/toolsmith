@@ -68,6 +68,8 @@ CODE contract:
   `ctx.read_table(params["file"])` and `ctx.read_table("file")` are the same. Other params
   (e.g. week) arrive as plain values in `params`. Never open paths yourself.
 - Write files ONLY with `ctx.write_output(name, content_str)`.
+- If spec.requires.tools names existing tools, reuse them with `ctx.call("<tool>", **params)` (returns
+  that tool's result dict) instead of re-implementing them.
 - Allowed imports: {", ".join(sorted(ALLOWED_IMPORTS))}. Nothing else.
 - Return {{"summary": str, "tables": {{name: list of row dicts}}, "chart_spec": {{"type": "bar|line",
   "x": [...], "y": [...], "title": str}}}} (omit chart_spec if there is no chart).

@@ -76,6 +76,47 @@ async def _local_search_tools(user_id: str, query: str, k: int) -> list[dict]:
     return sorted(hits, key=lambda h: -h["score"])[:k]
 
 
+class MissingDependency(LookupError):
+    pass
+
+
+async def dependency_code(user_id: str, names: list[str], max_depth: int = 4) -> dict[str, str]:
+    """{tool_name: active version code} for a composed tool's `requires.tools`, transitively
+    (a dep may call deps). Fails closed: a missing or inactive dependency raises."""
+    db = get_db()
+    out: dict[str, str] = {}
+    frontier = list(dict.fromkeys(names))
+    for _ in range(max_depth):
+        if not frontier:
+            break
+        nxt = []
+        for name in frontier:
+            if name in out:
+                continue
+            tool = await db.tools.find_one({"user_id": user_id, "name": name, "status": "active"})
+            if not tool:
+                raise MissingDependency(f"dependency {name!r} is not an active tool")
+            tv = await db.tool_versions.find_one({"_id": f"{tool['_id']}@v{tool['active_version']}"})
+            if not tv:
+                raise MissingDependency(f"dependency {name!r} has no active version")
+            out[name] = tv["code"]
+            nxt += (tv.get("requires") or {}).get("tools") or []
+        frontier = nxt
+    return out
+
+
+async def dependents(user_id: str, tool_id: str) -> list[str]:
+    """Active tools that call this one (prune safety). P1's lineage when present."""
+    try:
+        from app.runtime.lineage import dependents as p1_dependents  # P1
+    except ImportError:
+        pass
+    else:
+        return await p1_dependents(user_id, tool_id)
+    return [t["_id"] async for t in get_db().tools.find(
+        {"user_id": user_id, "status": "active", "lineage.calls": tool_id, "_id": {"$ne": tool_id}}, {"_id": 1})]
+
+
 async def recall_episodes(user_id: str, query: str, k: int = 5) -> list:
     try:
         from app.search import recall_episodes as p1_recall  # P1

@@ -244,6 +244,7 @@ def main() -> None:
         scopes=cfg["scopes"],
         inputs_dir=Path(cfg["input_dir"]),
         output_dir=Path(cfg["output_dir"]),
+        tools_dir=Path(cfg["tools_dir"]),
     )
     output = {}
     error = None

@@ -37,7 +37,8 @@ async def run_gate(candidate_id: str) -> dict:
     if not cand:
         raise ValueError(f"candidate {candidate_id} not found")
     t0 = time.monotonic()
-    unit, replay, dup = await asyncio.gather(check_unit(cand), check_replay(cand), check_duplicate(cand))
+    unit, replay, dup = await asyncio.gather(check_unit(cand), check_replay(cand, await _deps_for(cand)),
+                                             check_duplicate(cand))
     side = check_side_effects(cand, replay.pop("_writes", []))
     checks = {"unit": unit, "replay": replay, "side_effects": side, "duplicate": dup}
     failed = [name for name, c in checks.items() if not c["ok"]]
@@ -111,8 +112,9 @@ def _case(label, ins, outs, names, spec, session_params) -> dict:
     inputs = dict(zip(names, ins, strict=False))
     tables = {_table_name(o): o for o in outs if o.endswith(".csv")}
     chart = next((o for o in outs if o.endswith(".json") and "chart" in Path(o).name), None)
+    extracted = next((o for o in outs if o.endswith("_params.json")), None)  # UC2: extracted param keys
     return {"label": label, "inputs": inputs, "params": _params_for(spec, ins[0], session_params),
-            "expected": {"tables": tables, "chart": chart}}
+            "expected": {"tables": tables, "chart": chart, "params": extracted}}
 
 
 def _path(item) -> str:
@@ -146,14 +148,27 @@ def _params_for(spec: dict, input_path: str, session_params: dict) -> dict:
     return params
 
 
-async def check_replay(cand: dict) -> dict:
+async def _deps_for(cand: dict) -> dict[str, str] | Exception:
+    """Composed tools: code of every `requires.tools` dependency, mounted for ctx.call."""
+    names = (cand.get("requires") or {}).get("tools") or []
+    if not names:
+        return {}
+    try:
+        return await deps.dependency_code(cand["user_id"], names)
+    except deps.MissingDependency as e:
+        return e
+
+
+async def check_replay(cand: dict, dep_code: dict[str, str] | Exception | None = None) -> dict:
+    if isinstance(dep_code, Exception):  # fail closed
+        return {"ok": False, "reason": str(dep_code), "cases": [], "_writes": []}
     cases = await replay_cases(cand)
     if not cases:
         return {"ok": False, "reason": "no evidence artifacts to replay", "cases": [], "_writes": []}
     scopes = (cand.get("requires") or {}).get("scopes", [])
     runs = await asyncio.gather(*[
         run_in_sandbox(cand["code"], "run", c["params"], {k: _input_value(v) for k, v in c["inputs"].items()},
-                       "dry_run", scopes, timeout_s=REPLAY_TIMEOUT_S) for c in cases])
+                       "dry_run", scopes, timeout_s=REPLAY_TIMEOUT_S, deps=dep_code or None) for c in cases])
     results, writes = [], []
     for case, r in zip(cases, runs, strict=True):
         diffs = [f"run failed: {_short(r.error)}"] if not r.ok else compare_output(r.output, case["expected"])
@@ -195,6 +210,21 @@ def compare_output(output: dict, expected: dict) -> list[str]:
     if expected.get("chart"):
         exp = json.loads(resolve_artifact(expected["chart"]).read_text(encoding="utf-8"))
         diffs += [f"chart: {d}" for d in compare_chart(output.get("chart_spec"), exp)]
+    if expected.get("params"):
+        exp = expected["params"]
+        exp = exp if isinstance(exp, dict) else json.loads(resolve_artifact(exp).read_text(encoding="utf-8"))
+        diffs += [f"params: {d}" for d in compare_params(output.get("params"), exp)]
+    return diffs
+
+
+def compare_params(got: dict | None, exp: dict) -> list[str]:
+    """Extracted key/value params (UC2): same keys, values equal after whitespace normalisation."""
+    if not isinstance(got, dict):
+        return ["no params in output"]
+    diffs = [f"missing key {k!r}" for k in exp if k not in got]
+    for k in exp:
+        if k in got and " ".join(str(got[k]).split()) != " ".join(str(exp[k]).split()):
+            diffs.append(f"{k!r}: {str(got[k])[:80]!r} != expected {str(exp[k])[:80]!r}")
     return diffs
 
 

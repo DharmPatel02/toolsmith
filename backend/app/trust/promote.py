@@ -47,8 +47,9 @@ async def promote(candidate_id: str, user_id: str) -> str:
     tool_id = existing["_id"] if existing else "tool_" + secrets.token_hex(4)
     version = (existing or {}).get("active_version", 0) + 1 if existing else 1
     vec = (await embeddings.embed([tool_embedding_text(cand)], "document"))[0]
+    calls = await _dependency_ids(user_id, (cand.get("requires") or {}).get("tools") or [])
 
-    ops = plan_ops(cand, tool_id, version, vec, existing)
+    ops = plan_ops(cand, tool_id, version, vec, existing, calls)
     await _run_in_transaction(db, ops)
     await deps.publish(user_id, "promoted", {"tool_id": tool_id, "candidate_id": candidate_id,
                                              "name": cand["spec"]["name"], "version": version,
@@ -62,7 +63,19 @@ def tool_embedding_text(cand: dict) -> str:
                                    (cand.get("tutorial_md") or "")[:1500]]))
 
 
-def plan_ops(cand: dict, tool_id: str, version: int, vec: list[float], existing: dict | None) -> list[Op]:
+async def _dependency_ids(user_id: str, names: list[str]) -> list[str]:
+    """requires.tools (names) -> tool ids for `tools.lineage.calls` (P1's $graphLookup walks these)."""
+    ids = []
+    for name in names:
+        t = await deps.get_db().tools.find_one({"user_id": user_id, "name": name, "status": "active"}, {"_id": 1})
+        if not t:
+            raise PromoteError(f"dependency {name!r} is not an active tool")
+        ids.append(t["_id"])
+    return ids
+
+
+def plan_ops(cand: dict, tool_id: str, version: int, vec: list[float], existing: dict | None,
+             calls: list[str] | None = None) -> list[Op]:
     now = datetime.now(UTC)
     spec = cand["spec"]
     origin = cand.get("origin") or {}
@@ -84,13 +97,13 @@ def plan_ops(cand: dict, tool_id: str, version: int, vec: list[float], existing:
         "derivation": cand["derivation"], "updated_at": now,
     }
     if existing:
-        tool_op = Op("tools", "update_one", ({"_id": tool_id}, {"$set": pointer}))
+        tool_op = Op("tools", "update_one", ({"_id": tool_id}, {"$set": {**pointer, "lineage.calls": calls or []}}))
     else:
         tool_op = Op("tools", "insert_one", ({
             "_id": tool_id, "user_id": cand["user_id"], **pointer, "created_at": now,
             "stats": {"runs": 0, "success": 0, "edited": 0, "p50_ms": None, "minutes_saved": 0},
             "baseline": {"success_rate": None, "window": 10}, "trust_history": [],
-            "lineage": {"calls": [], "parents": [], "merged_from": [], "merged_into": None}},))
+            "lineage": {"calls": calls or [], "parents": [], "merged_from": [], "merged_into": None}},))
     ops = [Op("tool_versions", "insert_one", (tv,)), tool_op]
     if cand.get("verdict_id"):
         ops.append(Op("verdicts", "update_one", ({"_id": cand["verdict_id"]}, {"$set": {"tool_id": tool_id}})))

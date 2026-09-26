@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import csv
 import glob
+import importlib.util
 import json
 import os
+import re
 import urllib.request
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -12,6 +14,7 @@ from urllib.parse import urlparse
 
 
 FETCH_MAP_INPUT = "__fetch_map__"
+MAX_CALL_DEPTH = 4
 
 
 @dataclass(slots=True)
@@ -29,12 +32,39 @@ class SandboxContext:
         scopes: list[str],
         inputs_dir: Path,
         output_dir: Path,
+        tools_dir: Path | None = None,
     ) -> None:
         self.mode = mode
         self.scopes = set(scopes)
         self.inputs_dir = inputs_dir
         self.output_dir = output_dir
+        self.tools_dir = tools_dir
         self.intended_writes: list[Write] = []
+        self._deps: dict[str, Any] = {}
+        self._call_depth = 0
+
+    def call(self, tool: str, **params: Any) -> Any:
+        """Run a dependency tool (composed tools, P2.3.6). Deps are mounted as tools/<name>.py and
+        loaded as separate modules (never concatenated: every tool defines its own run()). They
+        share this ctx, so the same inputs, scopes and intended-writes log apply."""
+        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", tool):
+            raise ValueError(f"invalid tool name: {tool!r}")
+        path = (self.tools_dir / f"{tool}.py") if self.tools_dir else None
+        if path is None or not path.exists():
+            raise LookupError(f"dependency {tool!r} is not mounted (declare it in requires.tools)")
+        if self._call_depth >= MAX_CALL_DEPTH:
+            raise RecursionError(f"ctx.call deeper than {MAX_CALL_DEPTH}")
+        module = self._deps.get(tool)
+        if module is None:
+            spec = importlib.util.spec_from_file_location(f"toolsmith_dep_{tool}", path)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            self._deps[tool] = module
+        self._call_depth += 1
+        try:
+            return module.run(self, **params)
+        finally:
+            self._call_depth -= 1
 
     def _input_path(self, name: str) -> Path:
         path = (self.inputs_dir / name).resolve()

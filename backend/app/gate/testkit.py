@@ -8,19 +8,21 @@ with the ordinary `run_in_sandbox(..., entry="run_tests")`; no special runner AP
 from __future__ import annotations
 
 FAKE_CTX_API = """\
-FakeCtx(tables: dict[str, DataFrame] = None, texts: dict[str, str] = None, pages: dict[url, html] = None)
+FakeCtx(tables: dict[str, DataFrame] = None, texts: dict[str, str] = None, pages: dict[url, html] = None,
+        calls: dict[tool_name, function(**kw) -> dict] = None)
   ctx.read_table(name) -> DataFrame copy of tables[name]
   ctx.read_text(name)  -> texts[name]
   ctx.fetch(url)       -> pages[url] (KeyError if missing)
   ctx.write_output(name, content) -> recorded in ctx.writes[name]
-  ctx.call(tool, **kw) -> raises NotImplementedError"""
+  ctx.call(tool, **kw) -> calls[tool](**kw)  (fake a dependency tool; missing -> NotImplementedError)"""
 
 FAKE_CTX_SRC = '''
 class FakeCtx:
-    def __init__(self, tables=None, texts=None, pages=None):
+    def __init__(self, tables=None, texts=None, pages=None, calls=None):
         self.tables = tables or {}
         self.texts = texts or {}
         self.pages = pages or {}
+        self.calls = calls or {}
         self.writes = {}
 
     def read_table(self, name):
@@ -36,7 +38,9 @@ class FakeCtx:
         self.writes[name] = content
 
     def call(self, tool, **kw):
-        raise NotImplementedError("ctx.call is not available in unit tests")
+        if tool not in self.calls:
+            raise NotImplementedError(f"no fake for dependency {tool!r}: FakeCtx(calls={{...}})")
+        return self.calls[tool](**kw)
 '''
 
 RUNNER_SRC = '''
