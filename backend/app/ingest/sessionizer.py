@@ -7,6 +7,33 @@ from hashlib import sha256
 from app.contracts import Observation, Session
 
 IDLE = timedelta(minutes=30)
+APP_SHIFT = timedelta(minutes=3)
+
+
+def _app(event: Observation) -> str:
+    return str(event.target.get("app") or event.target.get("window_title") or event.meta.source)
+
+
+def _tokens(text: str) -> set[str]:
+    return {item.lower() for item in text.replace("·", " ").split() if item}
+
+
+def _intent_cosine(left: str, right: str) -> float:
+    a, b = _tokens(left), _tokens(right)
+    if not a or not b:
+        return 1.0
+    return len(a & b) / ((len(a) * len(b)) ** 0.5)
+
+
+def _should_split_for_app_shift(group: list[Observation], event: Observation) -> bool:
+    if not group:
+        return False
+    seen = {_app(item) for item in group}
+    app = _app(event)
+    if app in seen or event.ts - group[-1].ts <= APP_SHIFT:
+        return False
+    prior_intent = " ".join(item.intent_text for item in group if item.intent_text)
+    return _intent_cosine(prior_intent, event.intent_text) < 0.5
 
 
 async def sessionize(
@@ -27,7 +54,11 @@ async def sessionize(
     for (user_id, supplied_id), stream in sorted(streams.items(), key=lambda item: str(item[0])):
         groups = []
         for event in sorted(stream, key=lambda item: item.ts):
-            if not groups or event.ts - groups[-1][-1].ts >= IDLE:
+            if (
+                not groups
+                or event.ts - groups[-1][-1].ts >= IDLE
+                or _should_split_for_app_shift(groups[-1], event)
+            ):
                 groups.append([])
             groups[-1].append(event)
         for index, group in enumerate(groups):
