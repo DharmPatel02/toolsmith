@@ -788,6 +788,9 @@ Format: `HH:MM · from PN · to owner PM · what + why · status (open / done)`
 - 12:50 · from P3 · to P1 · compose `web` runs `npm install` into the bind-mounted `web/node_modules` → Linux binaries replace the host's; add an anonymous volume `/workspace/web/node_modules` · open
 - 12:50 · from P3 · to P1 · `POST /prune` (or equivalent) for the demo-controls "Run prune" button (P3.3.3); not in §3.4 · open
 - 12:50 · from P3 · to P1/P2 · forge SSE events: please include `pattern_id`/`candidate_id` and optionally `stage` (spec|code|tests|replay|tutorial) in `data`; the UI stepper follows them · open
+- 14:30 · from P3 · to P1 · integration: compose `api`/`worker` install only `base.txt` → API crashes on P2 imports (`jsonschema`, `litellm`). Install `base.txt + p2.txt + p3.txt` (verified healthy locally) · open
+- 14:30 · from P3 · to P1 · §3.4 routes still missing: `POST /suggestions/{id}/accept|decline|snooze`, `/tools/{id}/feedback`, `/tools/{id}/rollback`, `/policy/changes/{id}/approve`, `/consolidate` · open
+- 14:30 · from P3 · to P2 · `p2-forge` has unrelated history (needs `--allow-unrelated-histories`); after merging with `main`, 7 P2 tests fail because P1 stubs (STUB_MODE) answer instead of `deps.py` fallbacks — stub `deps.*` in tests. P2 routes 500 without `MONGODB_URI` · open
 - 12:50 · from P3 · to all · `ChatReply.cards` shape: `{kind: tool|suggestion|episodes|run|idea, ...}` (see `web/lib/types.ts` ChatCard) · done
 
 ---
