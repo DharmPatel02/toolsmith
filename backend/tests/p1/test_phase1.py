@@ -157,7 +157,7 @@ def test_window_features_and_clustering():
 
 def test_generator_counts_dates_and_determinism(tmp_path):
     full, logs, truth = generate()
-    assert (len(full), len(logs), len(truth["sessions"])) == (1000, 979, 40)
+    assert (len(full), len(logs), len(truth["sessions"])) == (1150, 1129, 46)  # UC2: 9 invoice runs
     assert generate() == (full, logs, truth)
     assert all(
         datetime.fromisoformat(s["started_at"]).weekday() == 0
@@ -231,14 +231,14 @@ async def test_seed_api_counts_and_isolation(tmp_path):
             response = await client.post("/dev/reset-history", json={"user_id": user})
             assert response.status_code == 200
             result = await seed(client, load_events(tmp_path, user, logs), user, batch_size=137)
-            assert result["inserted"] == (979 if logs else 1000)
-        assert len(await memory_store.observations("u_1")) == 1000
-        assert len(await memory_store.observations("u_1_logs_only")) == 979
+            assert result["inserted"] == (1129 if logs else 1150)
+        assert len(await memory_store.observations("u_1")) == 1150
+        assert len(await memory_store.observations("u_1_logs_only")) == 1129
         assert (
             await client.post("/dev/reset-history", json={"user_id": "other"})
         ).status_code == 403
         await client.post("/dev/reset-history", json={"user_id": "u_1"})
-        assert len(await memory_store.observations("u_1_logs_only")) == 979
+        assert len(await memory_store.observations("u_1_logs_only")) == 1129
 
 
 def test_restored_phase0_capture_and_lineage():

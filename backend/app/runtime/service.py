@@ -6,9 +6,30 @@ from app.db import get_db
 from app.events import publish
 from app.fixtures import fixture, require_demo_user
 from app.policy.service import get_policy
+from app.runtime import actions as run_actions
 from app.runtime.lineage import resolve_deps
 from app.sandbox.runner import run_in_sandbox
 from app.search import search_tools
+
+
+def _writes(sandbox: SandboxResult | None) -> list[dict]:
+    """Runner dataclasses -> contract dicts (path, kind, bytes, payload)."""
+    out = []
+    for w in sandbox.intended_writes if sandbox else []:
+        get = (
+            (lambda k, w=w: w.get(k))
+            if isinstance(w, dict)
+            else (lambda k, w=w: getattr(w, k, None))
+        )
+        out.append(
+            {
+                "path": get("path"),
+                "kind": get("kind") or "file",
+                "bytes": get("bytes"),
+                "payload": get("payload"),
+            }
+        )
+    return out
 
 
 def _run_result(
@@ -18,18 +39,26 @@ def _run_result(
     tool_id: str | None,
     score: float | None,
     sandbox: SandboxResult | None = None,
+    mode: str = "dry_run",
+    status: str | None = None,
+    items: list[dict] | None = None,
 ) -> RunResult:
+    writes = _writes(sandbox)
+    preview = mode == "dry_run"
     return RunResult(
         run_id=run_id,
-        mode="dry_run",
+        mode=mode,
         output=(sandbox.output if sandbox else {}),
-        intended_writes=(sandbox.intended_writes if sandbox else []),
-        needs_confirm=True,
+        intended_writes=writes,
+        # a preview needs a yes before anything is written or sent; a confirmed run doesn't
+        needs_confirm=preview and bool(writes) and bool(sandbox and sandbox.ok),
         duration_ms=(sandbox.duration_ms if sandbox else 0),
         tokens=0,
         route=route,
         tool_id=tool_id,
         score=score,
+        status=status,
+        actions=[run_actions.public_item(i) for i in (items or [])],
     )
 
 
@@ -37,10 +66,11 @@ def _tool_identity(tool: dict) -> str:
     return str(tool.get("tool_id") or tool.get("_id"))
 
 
-async def update_after_run(run: Run) -> None:
+async def update_after_run(run: Run | dict) -> None:
     from app.trust.service import update_after_run as trust_update_after_run
 
-    await trust_update_after_run(run)
+    # P2's ladder reads a plain dict (run.get(...)); a pydantic Run would raise AttributeError
+    await trust_update_after_run(run if isinstance(run, dict) else run.model_dump(by_alias=True))
 
 
 async def _active_tool_and_version(user_id: str, tool_id: str) -> tuple[dict, dict]:
@@ -49,7 +79,7 @@ async def _active_tool_and_version(user_id: str, tool_id: str) -> tuple[dict, di
         {
             "$or": [{"_id": tool_id}, {"tool_id": tool_id}],
             "user_id": user_id,
-            "status": {"$ne": "deprecated"},
+            "status": {"$nin": ["deprecated", "deleted"]},
         }
     )
     if not tool:
@@ -67,7 +97,9 @@ async def _active_tool_and_version(user_id: str, tool_id: str) -> tuple[dict, di
     return tool, version
 
 
-async def _run_live_tool(user_id: str, tool_id: str, params: dict, *, score: float) -> RunResult:
+async def _run_live_tool(
+    user_id: str, tool_id: str, params: dict, *, score: float, confirm: bool = False
+) -> RunResult:
     db = get_db()
     tool, version = await _active_tool_and_version(user_id, tool_id)
     resolved = await resolve_deps(user_id, _tool_identity(tool))
@@ -91,7 +123,9 @@ async def _run_live_tool(user_id: str, tool_id: str, params: dict, *, score: flo
             "created_at": now,
         }
     )
-    mode = "dry_run" if tool.get("trust", "dry_run") == "dry_run" else "live"
+    # a preview never writes or sends anything; a confirmed run does (auto steps now, approval
+    # steps after an approver says yes)
+    mode = "live" if confirm else "dry_run"
     try:
         sandbox = await run_in_sandbox(
             version["code"],
@@ -111,6 +145,10 @@ async def _run_live_tool(user_id: str, tool_id: str, params: dict, *, score: flo
             error=str(exc),
             duration_ms=0,
         )
+    items = run_actions.items_from_writes(sandbox.intended_writes)
+    if confirm and sandbox.ok:
+        await run_actions.execute_items(user_id, items, approved=False)
+    status = run_actions.run_status(items, sandbox.ok) if confirm else "preview"
     run_doc = {
         "_id": run_id,
         "tool_id": _tool_identity(tool),
@@ -126,12 +164,17 @@ async def _run_live_tool(user_id: str, tool_id: str, params: dict, *, score: flo
         "duration_ms": sandbox.duration_ms,
         "error": sandbox.error,
         "started_at": now,
+        "mode": mode,
+        "status": status,
+        "actions": items,
+        "output": {"summary": (sandbox.output or {}).get("summary")},
     }
     await db.runs.insert_one(run_doc)
-    try:
-        await update_after_run(Run(**run_doc))
-    except (ImportError, NotImplementedError):
-        pass
+    if confirm:  # previews don't move the trust ladder; confirmed runs do
+        try:
+            await update_after_run({**run_doc, "user_confirmed": True})
+        except (ImportError, NotImplementedError, ValueError):
+            pass
     await publish(
         user_id,
         "run_completed",
@@ -148,6 +191,9 @@ async def _run_live_tool(user_id: str, tool_id: str, params: dict, *, score: flo
         tool_id=_tool_identity(tool),
         score=score,
         sandbox=sandbox,
+        mode=mode,
+        status=status,
+        items=items,
     )
 
 
@@ -207,4 +253,4 @@ async def run_tool(user_id: str, tool_id: str, params: dict, confirm: bool = Fal
             raise LookupError("Unknown fixture tool")
         # Even confirm=True never executes code in Phase 0.
         return RunResult(**fixture("run_result.json"))
-    return await _run_live_tool(user_id, tool_id, params, score=1.0)
+    return await _run_live_tool(user_id, tool_id, params, score=1.0, confirm=confirm)

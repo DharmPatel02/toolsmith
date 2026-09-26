@@ -313,7 +313,9 @@ class WhyResponse(Contract):
 
 class Write(Contract):
     path: str
-    kind: str = "file"
+    kind: str = "file"  # file extension, or "action:<app>.<verb>" for an intended action
+    bytes: int | None = None
+    payload: dict[str, Any] | None = None  # intended actions only (Slack text, Jira summary, ...)
 
 
 class SandboxResult(Contract):
@@ -336,6 +338,8 @@ class RunResult(Contract):
     route: Literal["found", "related", "not_found"] | None = None
     tool_id: str | None = None
     score: float | None = None
+    status: Literal["preview", "done", "awaiting_approval", "failed"] | None = None
+    actions: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class Run(Contract):
@@ -353,6 +357,11 @@ class Run(Contract):
     duration_ms: float = 0
     error: str | None = None
     started_at: AwareDatetime
+    mode: Literal["dry_run", "live"] = "dry_run"
+    status: Literal[
+        "preview", "done", "awaiting_approval", "rejected", "reverted", "failed"
+    ] = "done"
+    actions: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class Verdict(Contract):

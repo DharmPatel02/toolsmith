@@ -14,7 +14,9 @@ FakeCtx(tables: dict[str, DataFrame] = None, texts: dict[str, str] = None, pages
   ctx.read_text(name)  -> texts[name]
   ctx.fetch(url)       -> pages[url] (KeyError if missing)
   ctx.write_output(name, content) -> recorded in ctx.writes[name]
-  ctx.call(tool, **kw) -> calls[tool](**kw)  (fake a dependency tool; missing -> NotImplementedError)"""
+  ctx.call(tool, **kw) -> calls[tool](**kw)  (fake a dependency tool; missing -> NotImplementedError)
+  ctx.action(kind, **payload) -> recorded in ctx.actions as {"kind": kind, **payload}
+                                 (e.g. ctx.action("slack.post", channel="#pricing", text="..."))"""
 
 FAKE_CTX_SRC = '''
 class FakeCtx:
@@ -24,6 +26,7 @@ class FakeCtx:
         self.pages = pages or {}
         self.calls = calls or {}
         self.writes = {}
+        self.actions = []
 
     def read_table(self, name):
         return self.tables[name].copy()
@@ -36,6 +39,9 @@ class FakeCtx:
 
     def write_output(self, name, content):
         self.writes[name] = content
+
+    def action(self, kind, **payload):
+        self.actions.append({"kind": kind, **payload})
 
     def call(self, tool, **kw):
         if tool not in self.calls:

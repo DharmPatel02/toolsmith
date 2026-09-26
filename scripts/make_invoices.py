@@ -4,13 +4,15 @@ Writes data/artifacts/uc2_invoices/:
   po.xlsx            purchase orders (po_number, vendor, sku, description, qty, unit_price)
   inv_<n>.pdf        6 history invoices (2 with a mismatch) + 1 live test invoice (qty mismatch)
   manifest.json      inbox emails (subject, from, attachment, received) read by the mock inbox
-  expected/<n>.json  what a correct tool must report per invoice (replay-gate fixtures)
+  expected/<n>.json  what a correct tool must report per invoice
+  expected/<n>_issues.csv  the same issues as the replay gate's expected table
 
 Deterministic: same files every run.   python scripts/make_invoices.py
 """
 
 from __future__ import annotations
 
+import csv
 import json
 from pathlib import Path
 
@@ -155,6 +157,11 @@ def main() -> None:
         (OUT / "expected" / f"{number.lower()}.json").write_text(
             json.dumps(expected(number), indent=2)
         )
+        # replay-gate table (gate/service.py reads expected/<input stem>_<table>.csv)
+        with (OUT / "expected" / f"{number.lower()}_issues.csv").open("w", newline="") as fh:
+            writer = csv.DictWriter(fh, fieldnames=["sku", "field", "po", "invoice"])
+            writer.writeheader()
+            writer.writerows(expected(number)["issues"])
         vendor = POS[po][0]
         manifest.append(
             {

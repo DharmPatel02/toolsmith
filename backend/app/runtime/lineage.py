@@ -56,10 +56,14 @@ async def dependents(user_id: str, tool_id: str) -> list[str]:
     names = [tool_id]
     if tool and tool.get("name"):
         names.append(tool["name"])
-    rows = await get_db().tools.find(
-        {"user_id": user_id, "status": "active", "lineage.calls": {"$in": names}},
-        {"_id": 1, "tool_id": 1},
-    ).to_list(length=None)
+    rows = (
+        await get_db()
+        .tools.find(
+            {"user_id": user_id, "status": "active", "lineage.calls": {"$in": names}},
+            {"_id": 1, "tool_id": 1},
+        )
+        .to_list(length=None)
+    )
     return [str(row.get("tool_id") or row["_id"]) for row in rows]
 
 

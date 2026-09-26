@@ -19,6 +19,7 @@ class Write:
     path: str
     kind: str
     bytes: int
+    payload: dict[str, Any] | None = None
 
 
 @dataclass(slots=True)
@@ -174,6 +175,13 @@ def _docker_command(root: Path, cfg: dict, scopes: list[str], name: str) -> list
     ]
 
 
+def pdf_text(path: Path) -> str:
+    """Text of every page, extracted outside the sandbox (pypdf, requirements/p3.txt)."""
+    from pypdf import PdfReader
+
+    return "\n".join(page.extract_text() or "" for page in PdfReader(str(path)).pages)
+
+
 def _materialize_inputs(input_dir: Path, inputs: dict[str, str]) -> None:
     for name, value in inputs.items():
         dest = (input_dir / name).resolve()
@@ -182,6 +190,10 @@ def _materialize_inputs(input_dir: Path, inputs: dict[str, str]) -> None:
         dest.parent.mkdir(parents=True, exist_ok=True)
         src = Path(value)
         if len(value) < 400 and src.exists() and src.is_file():
+            if src.suffix.lower() == ".pdf":
+                # tools can't parse PDFs (no PDF lib in the sandbox, on purpose): mount the text
+                dest.with_suffix(".txt").write_text(pdf_text(src), encoding="utf-8")
+                continue
             if not dest.suffix and src.suffix:  # "file" -> "file.xlsx" so read_table picks the parser
                 dest = dest.with_suffix(src.suffix)
             shutil.copyfile(src, dest)

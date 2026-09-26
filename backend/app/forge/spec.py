@@ -74,6 +74,16 @@ def normalize_spec(spec: dict, pattern: dict) -> dict:
     scopes = req.setdefault("scopes", [])
     if spec.get("outputs", {}).get("files") and "write:outputs" not in scopes:
         scopes.append("write:outputs")
+    # what the tool may do in other apps comes from the observed steps, not from the model
+    from app.automation.plan import automation_plan
+
+    plan = automation_plan(pattern)
+    for step in plan["steps"]:
+        app = step["connector"]
+        if app and app != "web" and f"app:{app}" not in scopes:
+            scopes.append(f"app:{app}")
+    spec["automation"] = [{k: step[k] for k in ("label", "automation", "connector")}
+                          for step in plan["steps"]]
 
     der = spec.setdefault("derivation", {})
     if pattern.get("observed_tier"):

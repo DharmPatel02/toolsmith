@@ -22,6 +22,10 @@ class Write:
     path: str
     kind: str
     bytes: int
+    payload: dict[str, Any] | None = None
+
+
+ACTION_KIND = re.compile(r"[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*")
 
 
 class SandboxContext:
@@ -134,6 +138,22 @@ class SandboxContext:
 
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(payload)
+
+    def action(self, kind: str, **payload: Any) -> None:
+        """Ask for a side effect in another app (e.g. ctx.action("slack.post", channel=..., text=...)).
+
+        Never executed here: tools have no network. It's recorded as an intended write; the runtime
+        runs it after the user confirms (or an approver approves) through a connector the user granted.
+        """
+        if not ACTION_KIND.fullmatch(kind):
+            raise ValueError(f"action kind must look like 'app.verb', got {kind!r}")
+        app = kind.split(".", 1)[0]
+        if f"app:{app}" not in self.scopes:
+            raise PermissionError(f"ctx.action({kind!r}) requires the app:{app} scope")
+        data = json.loads(json.dumps(payload, default=str))  # JSON-safe, detached from tool objects
+        self.intended_writes.append(
+            Write(path=kind, kind=f"action:{kind}", bytes=len(json.dumps(data)), payload=data)
+        )
 
 
 def _serialize(data: Any) -> bytes:

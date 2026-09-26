@@ -18,18 +18,26 @@ WORKFLOWS = {
         "web.fetch:html",
         "web.extract:list",
         "table.dedupe",
-        "table.aggregate",
-        "chart.line",
+        "table.compare",
         "export.html",
+        "slack.post",
     ],
-    "uc2": ["doc.read:pdf", "doc.extract:params", "table.cast", "chart.line", "export.pdf"],
+    "uc2": [
+        "email.open",
+        "pdf.extract",
+        "table.join",
+        "invoice.validate",
+        "tracker.upsert",
+        "slack.post",
+        "jira.create",
+    ],
     "decoy_a": ["file.download:csv", "table.select", "table.sort", "export.csv"],
     "decoy_b": ["file.open:csv", "table.select", "table.filter"],
 }
 TITLES = {
     "uc1": "Build weekly sales dashboard",
-    "uc3": "Scrape analyze and report competitor prices",
-    "uc2": "Understand this paper and reproduce its simulation",
+    "uc3": "Compare competitor prices and alert the team",
+    "uc2": "Check vendor invoices against POs and log them",
     "decoy_a": "Clean downloaded CSV files",
     "decoy_b": "Explore a different analysis workflow",
     "noise": "Unrelated browsing",
@@ -42,11 +50,11 @@ def generate(*, user_id="u_1", start="2026-09-07"):
         raise ValueError("History must begin on a Monday")
     specs = [("uc1", day, 0) for day in (0, 7, 14)]
     specs += [("uc3", day, 1) for day in range(19) if day % 7 < 5]
-    specs += [("uc2", day, 2) for day in (1, 9, 18)]
+    specs += [("uc2", day, 2) for day in (0, 2, 4, 7, 9, 11, 14, 16, 18)]  # Mon/Wed/Fri
     specs += [("decoy_a", 12, hour - 5) for hour in range(6)]
     specs += [("decoy_b", day, 3) for day in (3, 8, 13, 17)]
     specs += [("noise", day, 5) for day in range(9)]
-    assert len(specs) == 40
+    assert len(specs) == 46
     events, truth = [], []
     counts = {}
     varied = [
@@ -94,7 +102,14 @@ def generate(*, user_id="u_1", start="2026-09-07"):
                 ],
             }
         elif label == "uc2":
-            paths["inputs"] = [f"data/artifacts/uc2/paper{1 + (number - 1) % 2}.txt"]
+            invoice = f"inv-{2201 + (number - 1) % 6}"
+            paths = {
+                "inputs": [
+                    f"data/artifacts/uc2_invoices/{invoice}.pdf",
+                    "data/artifacts/uc2_invoices/po.xlsx",
+                ],
+                "outputs": [f"data/artifacts/uc2_invoices/expected/{invoice}_issues.csv"],
+            }
         elif label == "uc3":
             paths["inputs"] = ["data/artifacts/uc3/v1.html"]
         truth.append(

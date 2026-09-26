@@ -407,7 +407,7 @@ async def test_database_initialization_is_repeatable():
     assert "timeseries" not in next(
         call.kwargs for call in db.create_collection.await_args_list if call.args == ("frames",)
     )
-    assert db.action_vocab.update_one.await_count == 60
+    assert db.action_vocab.update_one.await_count == 76  # 38 verbs x 2 runs (+ automation verbs)
 
 
 @pytest.mark.parametrize(

@@ -298,5 +298,102 @@
     "seen": 3,
     "first_seen": "2026-09-26T14:30:00Z",
     "example_frames": []
+  },
+  {
+    "_id": "table.compare",
+    "status": "active",
+    "aliases": [
+      "compare_prices",
+      "diff"
+    ],
+    "embedding": [],
+    "seen": 3,
+    "first_seen": "2026-09-26T20:32:10Z",
+    "example_frames": []
+  },
+  {
+    "_id": "email.open",
+    "status": "active",
+    "aliases": [
+      "open_email",
+      "read_email",
+      "gmail.open"
+    ],
+    "embedding": [],
+    "seen": 3,
+    "first_seen": "2026-09-26T20:32:10Z",
+    "example_frames": []
+  },
+  {
+    "_id": "email.reply",
+    "status": "active",
+    "aliases": [
+      "reply_email"
+    ],
+    "embedding": [],
+    "seen": 3,
+    "first_seen": "2026-09-26T20:32:10Z",
+    "example_frames": []
+  },
+  {
+    "_id": "pdf.extract",
+    "status": "active",
+    "aliases": [
+      "extract_pdf",
+      "pdf.read_invoice"
+    ],
+    "embedding": [],
+    "seen": 3,
+    "first_seen": "2026-09-26T20:32:10Z",
+    "example_frames": []
+  },
+  {
+    "_id": "invoice.validate",
+    "status": "active",
+    "aliases": [
+      "validate_invoice",
+      "three_way_match"
+    ],
+    "embedding": [],
+    "seen": 3,
+    "first_seen": "2026-09-26T20:32:10Z",
+    "example_frames": []
+  },
+  {
+    "_id": "tracker.upsert",
+    "status": "active",
+    "aliases": [
+      "tracker.update",
+      "update_tracker"
+    ],
+    "embedding": [],
+    "seen": 3,
+    "first_seen": "2026-09-26T20:32:10Z",
+    "example_frames": []
+  },
+  {
+    "_id": "slack.post",
+    "status": "active",
+    "aliases": [
+      "slack.send",
+      "post_slack",
+      "chat.postMessage"
+    ],
+    "embedding": [],
+    "seen": 3,
+    "first_seen": "2026-09-26T20:32:10Z",
+    "example_frames": []
+  },
+  {
+    "_id": "jira.create",
+    "status": "active",
+    "aliases": [
+      "jira.create_issue",
+      "create_ticket"
+    ],
+    "embedding": [],
+    "seen": 3,
+    "first_seen": "2026-09-26T20:32:10Z",
+    "example_frames": []
   }
 ]

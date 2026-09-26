@@ -195,8 +195,10 @@ async def suggestions():
             if any(
                 rule.get("pattern_id") == pattern.get("_id")
                 or (
+                    # "never for this workflow": block patterns containing all of its steps,
+                    # not every pattern that merely shares one step with it
                     rule.get("blocked_signatures")
-                    and set(signature) & set(rule["blocked_signatures"])
+                    and set(rule["blocked_signatures"]) <= set(signature)
                 )
                 for rule in rules
             ):
@@ -239,6 +241,8 @@ async def suggestions():
                     "value": pattern.get("value", 0),
                     "signature": signature,
                     "dynamic_params": pattern.get("dynamic_params", []),
+                    "deleted_at": pattern.get("deleted_at"),
+                    "deleted_tool_id": pattern.get("deleted_tool_id"),
                 }
             )
         for item in output:

@@ -172,7 +172,7 @@ async def check_replay(cand: dict, dep_code: dict[str, str] | Exception | None =
     results, writes = [], []
     for case, r in zip(cases, runs, strict=True):
         diffs = [f"run failed: {_short(r.error)}"] if not r.ok else compare_output(r.output, case["expected"])
-        writes += [w.path for w in r.intended_writes]
+        writes += [w.path if not w.kind.startswith("action:") else w.kind for w in r.intended_writes]
         results.append({"label": case["label"], "ok": not diffs, "diffs": diffs[:5], "params": case["params"],
                         "inputs": {k: _input_label(v) for k, v in case["inputs"].items()},
                         "duration_ms": r.duration_ms,
@@ -288,15 +288,22 @@ def _read_csv(path: str) -> list[dict]:
 # ---- (c) side effects --------------------------------------------------------
 
 def check_side_effects(cand: dict, writes: list[str]) -> dict:
+    """Files need write:outputs (and must be declared); `action:<app>.<verb>` needs app:<app>."""
     scopes = set((cand.get("requires") or {}).get("scopes", []))
     violations = []
-    if writes and "write:outputs" not in scopes:
-        violations.append(f"writes {sorted(set(writes))} without the write:outputs scope")
+    actions = sorted({w for w in writes if w.startswith("action:")})
+    files = [w for w in writes if not w.startswith("action:")]
+    if files and "write:outputs" not in scopes:
+        violations.append(f"writes {sorted(set(files))} without the write:outputs scope")
     declared = set((cand.get("spec") or {}).get("outputs", {}).get("files", []))
-    if declared and (extra := sorted(set(writes) - declared)):
+    if declared and (extra := sorted(set(files) - declared)):
         violations.append(f"undeclared output files {extra}")
-    return {"ok": not violations, "reason": "; ".join(violations), "writes": sorted(set(writes)),
-            "scopes": sorted(scopes)}
+    for action in actions:
+        app = action.removeprefix("action:").split(".", 1)[0]
+        if f"app:{app}" not in scopes:
+            violations.append(f"{action} without the app:{app} scope")
+    return {"ok": not violations, "reason": "; ".join(violations), "writes": sorted(set(files)),
+            "actions": actions, "scopes": sorted(scopes)}
 
 
 # ---- (d) duplicate -----------------------------------------------------------

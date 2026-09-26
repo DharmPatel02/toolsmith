@@ -19,7 +19,8 @@ Return a ToolSpec as JSON:
   tool reads with ctx.read_table(<param name>), not a value.
 - outputs: {"tables": [names], "chart": true|false, "files": [file names written, e.g. "dashboard.html"]}.
 - requires: {"scopes": [...], "deps": [...], "tools": []}. Scopes: "write:outputs" if it writes files,
-  "net:<domain>" per domain it fetches. deps only from: pandas, numpy, openpyxl, bs4, lxml, plotly.
+  "net:<domain>" per domain it fetches, "app:<app>" per app it asks to act in (slack, jira, tracker,
+  email). deps only from: pandas, numpy, openpyxl, bs4, lxml, plotly.
 - keywords: 5-10 search words a user might type to find this tool.
 - steps: the tool's steps in plain words, in order.
 - derivation: {"observed_tier": "T0|T1|T2", "execution_path": "api|browser|cli|assisted"}.
@@ -68,6 +69,10 @@ CODE contract:
   `ctx.read_table(params["file"])` and `ctx.read_table("file")` are the same. Other params
   (e.g. week) arrive as plain values in `params`. Never open paths yourself.
 - Write files ONLY with `ctx.write_output(name, content_str)`.
+- Effects in other apps are REQUESTED, never performed: `ctx.action("slack.post", channel=..., text=...)`,
+  `ctx.action("jira.create", summary=..., description=...)`, `ctx.action("tracker.upsert", ref=...,
+  status=..., note=...)` (needs scope "app:<app>"). The runtime does them after the user or an approver
+  confirms. Never call HTTP APIs, SDKs or webhooks yourself.
 - If spec.requires.tools names existing tools, reuse them with `ctx.call("<tool>", **params)` (returns
   that tool's result dict) instead of re-implementing them.
 - Allowed imports: {", ".join(sorted(ALLOWED_IMPORTS))}. Nothing else.
@@ -103,17 +108,37 @@ Fix every problem and return the full corrected JSON {{"code": "...", "tests": "
 
 # ---- tutorial ---------------------------------------------------------------
 
-TUTORIAL_HEADINGS = ["What it does", "What you give it", "What you get back", "Example", "Limits"]
+TUTORIAL_HEADINGS = [
+    "What it does",
+    "What's automated",
+    "What needs your approval",
+    "What you give it",
+    "What you get back",
+    "Example",
+    "Permissions used",
+    "How to undo or delete",
+    "Limits",
+]
 
 TUTORIAL_PROMPT = """\
 Write TOOL.md, a one-page tutorial for a non-programmer, in Markdown.
-Exactly these five sections, in this order, each as "## <heading>":
+Exactly these sections, in this order, each as "## <heading>":
 ## What it does
+## What's automated
+## What needs your approval
 ## What you give it
 ## What you get back
 ## Example
+## Permissions used
+## How to undo or delete
 ## Limits
-Rules: at most 300 words in total, plain language, no code blocks, no Python. The Example uses the
-real example run given below (inputs and a short summary of the result). Limits names what it does
-NOT handle. Start with a "# <tool title>" line. Output only the Markdown.
+Rules: at most 400 words in total, plain language, no code blocks, no Python.
+- "What's automated" and "What needs your approval" list the AUTOMATION steps given below, word for
+  word, split by their automation value ("auto" vs "approval"); write "Nothing." if a list is empty.
+- "Permissions used" lists the scopes in REQUIRES in plain words (e.g. app:slack = post in Slack).
+- "How to undo or delete": every confirmed run can be undone from the tool page (Undo on the run);
+  the tool can be deleted any time and may be suggested again later unless you choose
+  "Don't suggest again".
+- The Example uses the real example run given below. Limits names what it does NOT handle.
+Start with a "# <tool title>" line. Output only the Markdown.
 """
