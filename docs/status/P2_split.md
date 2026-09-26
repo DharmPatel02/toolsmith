@@ -67,4 +67,11 @@ git worktree add ../toolsmith-codex -b p2-codex  # lane X works in this second f
 
 ## Requests between lanes
 Format: `HH:MM · C→X or X→C · what · status`
-- _(none yet)_
+- 11:40 · C→X · **Scope names** the runner must honour: `net:<domain>` enables `ctx.fetch` for that domain; `write:outputs` allows `ctx.write_output` in `live` mode. In `dry_run` every `write_output` is recorded as `Write{path, bytes}` in `intended_writes` and nothing is written. · open
+- 11:40 · C→X · **Unit tests run through the runner, no extra API**: the gate calls `run_in_sandbox(code=<tool code + FakeCtx + tests + runner>, entry="run", params={}, inputs={}, mode="dry_run", scopes=[])`. So `run_in_sandbox` just has to exec `code` as a module and call `entry(ctx, **params)`. · open
+- 11:40 · C→X · **UC1 artifacts (P2.2.0) shape**, the gate compares against these:
+  - `data/artifacts/uc1/week{1,2,4}.xlsx` columns `date, reg, product, amt`; **week3.xlsx** renamed: `date, region_name, product, amount`. ~200 rows, 4–5 regions, a few empty rows/NaN `amt`, `amt` stored as text in some rows (so `table.cast` matters).
+  - reference `data/artifacts/uc1/reference.py week1.xlsx` → rename → dropna → cast float → pivot sum by Region.
+  - `expected/weekN_pivot.csv`: columns `Region,Amount`, sorted by Region, Amount rounded to 2 dp.
+  - `expected/weekN_chart.json`: `{"type": "bar", "x": [regions sorted], "y": [amounts], "title": "Sales by Region - week N"}`.
+  - The forged tool returns `{"summary": str, "tables": {"pivot": [{"Region":..,"Amount":..}]}, "chart_spec": {same shape}}` and writes `dashboard.html`. · open
