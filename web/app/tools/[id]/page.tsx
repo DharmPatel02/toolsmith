@@ -1,9 +1,11 @@
 "use client";
 import { useParams } from "next/navigation";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { ErrorState, ExecutionPathBadge, Loading, PageHeader, Stat, TrustBadge } from "@/components/common";
 import { RaceView } from "@/components/race-view";
+import { RunHistory, ToolLifecycle } from "@/components/tool-lifecycle";
 import { ARTIFACT_FILES, RunPanel } from "@/components/run-panel";
 import { CodeViewer, Markdown, ParamsTable, RequiresList } from "@/components/tool-doc";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +22,7 @@ export default function ToolPage() {
   const versions = useApi(() => api.versions(id), [id]);
   const lineage = useApi(() => api.lineage(id), [id]);
   const metrics = useApi(() => api.metrics());
+  const [runsVersion, setRunsVersion] = useState(0);
 
   useEvents(
     (e) => {
@@ -61,6 +64,7 @@ export default function ToolPage() {
             <Badge variant="outline">v{t.active_version}</Badge>
           </span>
         }
+        actions={<ToolLifecycle toolId={id} title={t.title} patternId={v.created_from?.pattern_id} />}
       />
 
       <div className="mb-6 grid gap-4 sm:grid-cols-4">
@@ -74,10 +78,31 @@ export default function ToolPage() {
         <div className="flex flex-col gap-6">
           <Card>
             <CardHeader>
+              <CardTitle>Tutorial</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Markdown>{v.tutorial_md}</Markdown>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
               <CardTitle>Run</CardTitle>
             </CardHeader>
             <CardContent>
-              <RunPanel toolId={id} schema={v.params_schema} baseline={{ minutes: 9, tokens: tokensBefore }} />
+              <RunPanel
+                toolId={id}
+                schema={v.params_schema}
+                baseline={{ minutes: 9, tokens: tokensBefore }}
+                onConfirmed={() => setRunsVersion((n) => n + 1)}
+              />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Run history</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <RunHistory key={runsVersion} toolId={id} />
             </CardContent>
           </Card>
           <Card>
@@ -86,14 +111,6 @@ export default function ToolPage() {
             </CardHeader>
             <CardContent>
               <RaceView intent={`make this week's ${t.title.toLowerCase()}`} inputs={{ file: ARTIFACT_FILES.at(-1) }} />
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Tutorial</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Markdown>{v.tutorial_md}</Markdown>
             </CardContent>
           </Card>
           <CodeViewer code={v.code} />

@@ -2,7 +2,11 @@
 // Mock mode (NEXT_PUBLIC_USE_MOCKS=true, or the sidebar switch which overrides it per browser)
 // serves web/mocks/*.json and records each call in `mockLog`, so pages can be built without a backend.
 import type {
+  Approval,
+  AutomationPlan,
   CaptureSession,
+  Connector,
+  RunSummary,
   CaptureState,
   Candidate,
   ChatCard,
@@ -101,8 +105,109 @@ async function request<T>(method: "GET" | "POST", path: string, body?: unknown, 
 const get = <T>(path: string, mock?: () => unknown) => request<T>("GET", path, undefined, mock);
 const post = <T>(path: string, body?: unknown, mock?: () => unknown) => request<T>("POST", path, body ?? {}, mock);
 
+// Mock step labels are generated from backend/app/automation/plan.py STEPS (keep in sync).
 // Mock-only state so the demo flow (accept → forge → approve, pause, layout switch) behaves plausibly.
-const mockState = { paused: false, mocksite: "v1" as "v1" | "v2" };
+const mockState = {
+  paused: false,
+  mocksite: "v1" as "v1" | "v2",
+  connected: new Set<string>(),
+  approvals: [
+    {
+      run_id: "run_inv_2202",
+      tool_id: "tool_invoice",
+      tool_title: "Invoice check and notify",
+      created_at: "2026-09-26T15:58:00Z",
+      summary: "INV-2202 · Acme Packaging · qty over PO on AC-14 (165 vs 150)",
+      actions: [
+        {
+          kind: "slack.post",
+          payload: { channel: "#warehouse", text: "INV-2202: AC-14 billed 165, PO-4102 ordered 150" },
+          description: "Post in #warehouse: INV-2202: AC-14 billed 165, PO-4102 ordered 150",
+          needs_approval: true,
+        },
+        {
+          kind: "jira.create",
+          payload: { summary: "INV-2202 quantity mismatch (AC-14)" },
+          description: "Open Jira ticket: INV-2202 quantity mismatch (AC-14)",
+          needs_approval: true,
+        },
+      ],
+    },
+  ] as Approval[],
+  runs: [] as RunSummary[],
+  deletedTools: new Set<string>(),
+};
+
+type MockStep = [label: string, automation: "auto" | "approval" | "manual", connector: string | null, scope: string | null];
+const MOCK_STEPS: Record<string, MockStep> = {
+  "file.open": ["Open the input file", "auto", null, null],
+  "file.save": ["Save the result", "auto", null, null],
+  "file.download": ["Download the file", "auto", null, null],
+  "file.upload": ["Upload a file", "approval", null, null],
+  "file.copy": ["Copy the file", "auto", null, null],
+  "table.rename": ["Rename columns", "auto", null, null],
+  "table.dropna": ["Drop empty rows", "auto", null, null],
+  "table.cast": ["Fix column types", "auto", null, null],
+  "table.pivot": ["Pivot the table", "auto", null, null],
+  "table.filter": ["Filter rows", "auto", null, null],
+  "table.join": ["Match against the reference table", "auto", null, null],
+  "table.sort": ["Sort rows", "auto", null, null],
+  "table.groupby": ["Group and summarize", "auto", null, null],
+  "table.dedupe": ["Remove duplicates", "auto", null, null],
+  "table.aggregate": ["Aggregate totals", "auto", null, null],
+  "table.select": ["Pick columns", "auto", null, null],
+  "table.compare": ["Compare against the competitor", "auto", null, null],
+  "chart.bar": ["Draw a bar chart", "auto", null, null],
+  "chart.line": ["Draw a trend line", "auto", null, null],
+  "chart.scatter": ["Draw a scatter plot", "auto", null, null],
+  "export.html": ["Write the HTML report", "auto", null, null],
+  "export.pdf": ["Write the PDF report", "auto", null, null],
+  "export.csv": ["Write the CSV export", "auto", null, null],
+  "report.html": ["Write the HTML report", "auto", null, null],
+  "doc.read": ["Read the document", "auto", null, null],
+  "doc.extract": ["Extract the key fields", "auto", null, null],
+  "web.navigate": ["Open the site", "auto", "web", null],
+  "web.fetch": ["Fetch the pages", "auto", "web", null],
+  "web.extract": ["Read products and prices", "auto", "web", null],
+  "web.click": ["Click through the site", "auto", "web", null],
+  "web.submit": ["Submit a form on the site", "manual", "web", null],
+  "email.open": ["Read new invoices from the inbox", "auto", "email", "mail:read"],
+  "email.reply": ["Reply to the vendor", "approval", "email", "mail:send"],
+  "msg.send": ["Send an email", "approval", "email", "mail:send"],
+  "pdf.extract": ["Extract invoice number, lines and totals from the PDF", "auto", null, null],
+  "invoice.validate": ["Check quantities and prices against the PO", "auto", null, null],
+  "tracker.upsert": ["Add or update the tracker row", "auto", "tracker", "rows:write"],
+  "slack.post": ["Post an alert in Slack", "approval", "slack", "chat:write"],
+  "jira.create": ["Open a Jira ticket for the mismatch", "approval", "jira", "issues:write"],
+};
+
+function mockPlan(signature: string[], minutes = 0): AutomationPlan {
+  const steps = signature.map((raw) => {
+    const verb = raw.split(":")[0];
+    const [label, automation, connector] = MOCK_STEPS[verb] ?? [verb.replace(".", " "), "auto", null, null];
+    return { step: raw, label, automation, connector };
+  });
+  const needed = new Map<string, string[]>();
+  for (const raw of signature) {
+    const entry = MOCK_STEPS[raw.split(":")[0]];
+    if (entry && entry[2] && entry[2] !== "web" && entry[3]) needed.set(entry[2], [entry[3]]);
+  }
+  const counts = { auto: 0, approval: 0, manual: 0 };
+  for (const step of steps) counts[step.automation] += 1;
+  return {
+    steps,
+    permissions: [...needed].map(([connector, scopes]) => ({ connector, scopes, granted: mockState.connected.has(connector) })),
+    counts,
+    est_minutes_saved_week: minutes,
+  };
+}
+
+const MOCK_CONNECTORS: [app: string, name: string, scopes: string[]][] = [
+  ["slack", "Slack", ["chat:write"]],
+  ["jira", "Jira", ["issues:write"]],
+  ["tracker", "Shipment tracker", ["rows:write"]],
+  ["email", "Email inbox", ["mail:read"]],
+];
 
 /** Resolves a server-relative asset path (e.g. frame thumb_url) against the API. */
 export function assetUrl(path: string): string {
@@ -191,15 +296,33 @@ export const api = {
   versions: (id: string) => get<ToolVersion[]>(`/tools/${id}/versions`, () => [toolMock.version]),
   rollback: (id: string, version: number) => post<{ ok: boolean }>(`/tools/${id}/rollback`, { version }, () => ({ ok: true })),
   runTool: (id: string, params: Record<string, unknown>, confirm = false) =>
-    post<RunResult>(`/tools/${id}/run`, { params, confirm }, () => ({
-      ...runResultMock,
-      tool_id: id,
-      mode: confirm ? "live" : "dry_run",
-      needs_confirm: !confirm,
-      duration_ms: confirm ? 8200 : 640,
-      tokens: 500,
-      output: confirm ? { summary: "Dashboard written to outputs/dashboard.html", rows: 214 } : runResultMock.output,
-    })),
+    post<RunResult>(`/tools/${id}/run`, { params, confirm }, () => {
+      const result = {
+        ...runResultMock,
+        run_id: `run_mock_${mockState.runs.length + 1}`,
+        tool_id: id,
+        mode: confirm ? ("live" as const) : ("dry_run" as const),
+        needs_confirm: !confirm,
+        duration_ms: confirm ? 8200 : 640,
+        tokens: 500,
+        output: confirm ? { summary: "Dashboard written to outputs/dashboard.html", rows: 214 } : runResultMock.output,
+      };
+      if (confirm) {
+        mockState.runs.unshift({
+          run_id: result.run_id,
+          started_at: new Date().toISOString(),
+          mode: "live",
+          outcome: "success",
+          status: "done",
+          duration_ms: result.duration_ms,
+          actions: [
+            { kind: "file.write", payload: { path: "dashboard.html" }, description: "Wrote dashboard.html", receipt: { id: "dashboard.html" } },
+            { kind: "slack.post", payload: { channel: "#sales" }, description: "Posted the dashboard link in #sales", receipt: { id: "msg1" } },
+          ],
+        });
+      }
+      return result;
+    }),
   runByIntent: (intent: string, inputs: Record<string, unknown>) =>
     post<RunResult>("/run", { intent, inputs }, () => runResultMock),
   feedback: (id: string, body: { run_id?: string; verdict: "good" | "bad" | "edited"; note?: string }) =>
@@ -237,7 +360,56 @@ export const api = {
         : { ...ideaNewMock, idea_id: "idea_mock_new", candidate_id: confirm ? "candidate_fixture" : undefined },
     ),
 
+  // Approval-first automation (P3 connectors + plan; P1 approvals, run undo, tool delete)
+  automationPlan: (signature: string[], estMinutesSavedWeek?: number) =>
+    post<AutomationPlan>("/automation/plan", { signature, est_minutes_saved_week: estMinutesSavedWeek }, () =>
+      mockPlan(signature, estMinutesSavedWeek ?? 0),
+    ),
+  connectors: () =>
+    get<Connector[]>("/connectors", () =>
+      MOCK_CONNECTORS.map(([app, name, scopes]) => ({
+        app,
+        name,
+        available_scopes: scopes,
+        status: mockState.connected.has(app) ? "connected" : "not_connected",
+        scopes: mockState.connected.has(app) ? scopes : [],
+        connected_at: mockState.connected.has(app) ? new Date().toISOString() : null,
+      })),
+    ),
+  connect: (app: string, scopes?: string[]) =>
+    post<{ consent_url: string }>(`/connectors/${app}/connect`, { scopes }, () => {
+      mockState.connected.add(app); // mock: consent is granted at once
+      return { consent_url: "" };
+    }),
+  revokeConnector: (app: string) =>
+    post<{ app: string; status: string }>(`/connectors/${app}/revoke`, undefined, () => {
+      mockState.connected.delete(app);
+      return { app, status: "revoked" };
+    }),
+  approvals: () => get<Approval[]>("/approvals", () => mockState.approvals),
+  decideApproval: (runId: string, decision: "approve" | "reject", note?: string) =>
+    post<{ ok: boolean; executed?: number }>(`/approvals/${runId}`, { decision, note }, () => {
+      const item = mockState.approvals.find((a) => a.run_id === runId);
+      mockState.approvals = mockState.approvals.filter((a) => a.run_id !== runId);
+      return { ok: true, executed: decision === "approve" ? (item?.actions.length ?? 0) : 0 };
+    }),
+  toolRuns: (toolId: string) => get<RunSummary[]>(`/tools/${toolId}/runs`, () => mockState.runs),
+  revertRun: (runId: string) =>
+    post<{ ok: boolean; undone: number }>(`/runs/${runId}/revert`, undefined, () => {
+      const run = mockState.runs.find((r) => r.run_id === runId);
+      if (run) run.status = "reverted";
+      return { ok: true, undone: run?.actions.length ?? 0 };
+    }),
+  deleteTool: (toolId: string, neverSuggestAgain = false) =>
+    post<{ ok: boolean; blocked_reason?: string }>(`/tools/${toolId}/delete`, { never_suggest_again: neverSuggestAgain }, () => {
+      mockState.deletedTools.add(toolId);
+      return { ok: true };
+    }),
+  closeCaptureSession: () =>
+    post<{ ok: boolean; sessions_closed: number }>("/capture/sessions/close", undefined, () => ({ ok: true, sessions_closed: 1 })),
+
   // Demo controls (P3)
+  loadDemoHistory: () => post<{ ok: boolean; log?: string }>("/demo/history", undefined, () => ({ ok: true })),
   mocksiteState: () => get<{ active: "v1" | "v2" }>("/demo/mocksite", () => ({ active: mockState.mocksite })),
   switchMocksite: (layout: "v1" | "v2") =>
     post<{ active: "v1" | "v2" }>(`/demo/mocksite/${layout}`, undefined, () => ((mockState.mocksite = layout), { active: layout })),

@@ -21,7 +21,17 @@ export interface Baseline {
   tokens: number;
 }
 
-export function RunPanel({ toolId, schema, baseline }: { toolId: string; schema: ParamsSchema; baseline?: Baseline }) {
+export function RunPanel({
+  toolId,
+  schema,
+  baseline,
+  onConfirmed,
+}: {
+  toolId: string;
+  schema: ParamsSchema;
+  baseline?: Baseline;
+  onConfirmed?: () => void;
+}) {
   const props = Object.entries(schema.properties ?? {});
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(
@@ -45,6 +55,7 @@ export function RunPanel({ toolId, schema, baseline }: { toolId: string; schema:
         setResult(res);
         setPreview(null);
         toast.success("Run complete");
+        onConfirmed?.();
       } else {
         setPreview(res);
         setResult(null);

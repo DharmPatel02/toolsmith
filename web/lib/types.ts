@@ -104,6 +104,8 @@ export interface Suggestion {
   signature: string[];
   dynamic_params: DynamicParam[];
   declined_reason?: string;
+  deleted_at?: string | null; // set when the user deleted the tool built from this pattern
+  deleted_tool_id?: string | null;
 }
 
 export interface EpisodeHit {
@@ -290,4 +292,64 @@ export interface RaceStep {
   tokens: number;
   elapsed_ms: number;
   done: boolean;
+}
+
+// ---- Approval-first automation (plan: connectors, intended actions, approvals, undo) ----
+
+export type Automation = "auto" | "approval" | "manual";
+
+export interface PlanStep {
+  step: string;
+  label: string;
+  automation: Automation;
+  connector: string | null;
+}
+
+export interface PlanPermission {
+  connector: string;
+  scopes: string[];
+  granted: boolean;
+}
+
+export interface AutomationPlan {
+  steps: PlanStep[];
+  permissions: PlanPermission[];
+  counts: Record<Automation, number>;
+  est_minutes_saved_week: number;
+}
+
+export interface Connector {
+  app: string;
+  name: string;
+  available_scopes: string[];
+  status: "connected" | "revoked" | "not_connected";
+  scopes: string[];
+  connected_at: string | null;
+}
+
+export interface ActionItem {
+  kind: string;
+  payload: Record<string, unknown>;
+  description?: string;
+  needs_approval?: boolean;
+  receipt?: Record<string, unknown> | null;
+}
+
+export interface Approval {
+  run_id: string;
+  tool_id: string;
+  tool_title?: string;
+  created_at: string;
+  summary?: string;
+  actions: ActionItem[];
+}
+
+export interface RunSummary {
+  run_id: string;
+  started_at: string;
+  mode: "dry_run" | "live";
+  outcome: string;
+  status?: "done" | "awaiting_approval" | "reverted" | "rejected";
+  duration_ms: number;
+  actions: ActionItem[];
 }

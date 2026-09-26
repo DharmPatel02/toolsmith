@@ -1,12 +1,10 @@
 "use client";
 import { useState } from "react";
-import { Ban, Clock, HelpCircle } from "lucide-react";
+import { Ban } from "lucide-react";
 import { toast } from "sonner";
 
-import { ErrorState, Loading, PageHeader, Signature } from "@/components/common";
-import { ForgeProgress } from "@/components/forge-progress";
+import { ErrorState, Loading, PageHeader } from "@/components/common";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { SuggestionCard } from "@/components/suggestion-card";
 import { WhyDrawer } from "@/components/why-drawer";
 import { api } from "@/lib/api";
 import type { Suggestion } from "@/lib/types";
@@ -29,29 +28,7 @@ export default function SuggestionsPage() {
   const declined = useApi(() => api.declinedSuggestions());
   const [why, setWhy] = useState<Suggestion | null>(null);
   const [declining, setDeclining] = useState<Suggestion | null>(null);
-  const [forging, setForging] = useState<Set<string>>(new Set());
-
   useEvents(() => suggestions.reload(), ["suggestion_new"]);
-
-  const accept = async (s: Suggestion) => {
-    try {
-      const res = await api.acceptSuggestion(s.pattern_id);
-      setForging((prev) => new Set(prev).add(s.pattern_id));
-      toast.success("Accepted: forging a tool", { description: res.job_id ? `job ${res.job_id}` : undefined });
-    } catch (err) {
-      toast.error((err as Error).message);
-    }
-  };
-
-  const snooze = async (s: Suggestion) => {
-    try {
-      await api.snoozeSuggestion(s.pattern_id);
-      toast("Snoozed", { description: "It will come back after the cooldown." });
-      suggestions.setData((list) => list?.filter((x) => x.pattern_id !== s.pattern_id) ?? null);
-    } catch (err) {
-      toast.error((err as Error).message);
-    }
-  };
 
   return (
     <>
@@ -65,48 +42,13 @@ export default function SuggestionsPage() {
 
       <div className="flex flex-col gap-4">
         {suggestions.data?.map((s) => (
-          <Card key={s.pattern_id}>
-            <CardHeader>
-              <CardTitle>{s.title}</CardTitle>
-              <CardDescription>{s.reason}</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-3">
-              <div className="flex flex-wrap gap-6 text-sm">
-                <Fact label="Seen" value={`${s.support}×`} />
-                <Fact label="Distinct days" value={s.distinct_days} />
-                <Fact label="Est. saving" value={`${s.est_minutes_saved_week} min/week`} />
-                {s.dynamic_params.length > 0 && <Fact label="Changes each time" value={s.dynamic_params.map((p) => p.name).join(", ")} />}
-              </div>
-              <Signature steps={s.signature} />
-              {forging.has(s.pattern_id) && (
-                <ForgeProgress
-                  patternId={s.pattern_id}
-                  onDone={() => {
-                    setForging((prev) => {
-                      const next = new Set(prev);
-                      next.delete(s.pattern_id);
-                      return next;
-                    });
-                    suggestions.setData((list) => list?.filter((x) => x.pattern_id !== s.pattern_id) ?? null);
-                  }}
-                />
-              )}
-            </CardContent>
-            <CardFooter className="gap-2">
-              <Button onClick={() => accept(s)} disabled={forging.has(s.pattern_id)}>
-                Accept
-              </Button>
-              <Button variant="outline" onClick={() => setDeclining(s)}>
-                Decline
-              </Button>
-              <Button variant="ghost" onClick={() => snooze(s)}>
-                <Clock /> Snooze
-              </Button>
-              <Button variant="link" className="ml-auto" onClick={() => setWhy(s)}>
-                <HelpCircle /> Why?
-              </Button>
-            </CardFooter>
-          </Card>
+          <SuggestionCard
+            key={s.pattern_id}
+            s={s}
+            onWhy={() => setWhy(s)}
+            onDecline={() => setDeclining(s)}
+            onGone={() => suggestions.setData((list) => list?.filter((x) => x.pattern_id !== s.pattern_id) ?? null)}
+          />
         ))}
       </div>
 
@@ -140,15 +82,6 @@ export default function SuggestionsPage() {
         onDeclined={(id) => suggestions.setData((list) => list?.filter((x) => x.pattern_id !== id) ?? null)}
       />
     </>
-  );
-}
-
-function Fact({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div>
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="font-medium tabular-nums">{value}</div>
-    </div>
   );
 }
 

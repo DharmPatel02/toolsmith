@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useSyncExternalStore } from "react";
-import { Hammer, Lightbulb, MessageSquare, Moon, Radio, ShieldCheck, SlidersHorizontal, Sun } from "lucide-react";
+import { ClipboardCheck, Hammer, KeyRound, Lightbulb, MessageSquare, Moon, Radio, Rocket, ShieldCheck, SlidersHorizontal, Sun } from "lucide-react";
 
 import { Switch } from "@/components/ui/switch";
 import { setUseMocks, isMockMode } from "@/lib/api";
@@ -11,11 +11,14 @@ import { useConnectionState } from "@/lib/useEvents";
 import { cn } from "@/lib/utils";
 
 const NAV = [
+  { href: "/onboarding", label: "Get started", icon: Rocket },
   { href: "/", label: "Tool shop", icon: Hammer },
   { href: "/suggestions", label: "Suggestions", icon: Lightbulb },
+  { href: "/approvals", label: "Approvals", icon: ClipboardCheck },
   { href: "/chat", label: "Chat", icon: MessageSquare },
-  { href: "/policy", label: "Policy & metrics", icon: ShieldCheck },
+  { href: "/connectors", label: "Connected apps", icon: KeyRound },
   { href: "/capture", label: "Capture & privacy", icon: Radio },
+  { href: "/policy", label: "Policy & metrics", icon: ShieldCheck },
   { href: "/demo", label: "Demo controls", icon: SlidersHorizontal },
 ];
 

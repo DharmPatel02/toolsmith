@@ -3,8 +3,10 @@
 import asyncio
 import json
 import os
+import sys
 import urllib.error
 import urllib.request
+from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 
@@ -44,3 +46,33 @@ async def switch_mocksite(layout: str):
     if layout not in LAYOUTS:
         raise HTTPException(status_code=400, detail=f"layout must be one of {LAYOUTS}")
     return await call_mocksite("POST", f"/demo/mocksite/{layout}")
+
+
+ROOT = Path(__file__).resolve().parents[3]
+
+
+async def _run(*args: str) -> tuple[int, str]:
+    env = {**os.environ, "PYTHONPATH": os.pathsep.join([str(ROOT / "backend"), str(ROOT)])}
+    proc = await asyncio.create_subprocess_exec(
+        sys.executable,
+        *args,
+        cwd=ROOT,
+        env=env,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.STDOUT,
+    )
+    out, _ = await asyncio.wait_for(proc.communicate(), timeout=300)
+    return proc.returncode, out.decode(errors="replace")[-600:]
+
+
+@router.post("/demo/history")
+async def load_demo_history():
+    """Demo only: generate the synthetic history (P1 generator) and seed it through this API."""
+    code, out = await _run("-m", "data.generator")
+    if code:
+        raise HTTPException(status_code=500, detail=f"generator failed: {out}")
+    api = os.environ.get("API_BASE", "http://localhost:8000")
+    code, out = await _run("scripts/seed.py", "--reset", "--api", api)
+    if code:
+        raise HTTPException(status_code=500, detail=f"seed failed: {out}")
+    return {"ok": True, "log": out.strip().splitlines()[-1] if out.strip() else ""}
