@@ -63,6 +63,7 @@ class Observation(Contract):
     duration_ms: float = Field(default=0, ge=0)
     error: str | None = None
     evidence: Evidence = Field(default_factory=Evidence)
+    artifacts: dict[str, list[str]] = Field(default_factory=dict)
 
 
 class ObservationBatch(Contract):
@@ -440,6 +441,36 @@ class Metrics(Contract):
     capture_quality: dict[str, float]
     cost_to_observe_usd_day: float
     race: dict[str, dict[str, float]]
+    detection: dict[str, float] = Field(default_factory=dict)
+    repair_loops: int = 0
+    toolbox_size_over_time: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class CaptureState(Contract):
+    paused: bool
+    allowed_origins: list[str]
+
+
+class CaptureSession(Contract):
+    user_id: str
+    started_at: AwareDatetime
+    ended_at: AwareDatetime | None = None
+    sources: list[str]
+    apps_seen: list[str]
+    frames_kept: int
+    frames_dropped_by_rule: dict[str, int]
+    paused: bool
+
+
+class LineageNode(ToolDep):
+    depth: int = Field(ge=0)
+
+
+class LineageResponse(Contract):
+    calls: list[LineageNode]
+    merged_from: list[str]
+    merged_into: str | None
+    dependents: list[str]
 
 
 class ChatReply(Contract):

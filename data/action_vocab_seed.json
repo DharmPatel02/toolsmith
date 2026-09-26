@@ -2,7 +2,12 @@
   {
     "_id": "file.open",
     "status": "active",
-    "aliases": [],
+    "aliases": [
+      "pandas.read_excel",
+      "read_excel",
+      "pandas.read_csv",
+      "read_csv"
+    ],
     "embedding": [],
     "seen": 3,
     "first_seen": "2026-09-26T14:30:00Z",
@@ -48,7 +53,9 @@
     "_id": "table.rename",
     "status": "active",
     "aliases": [
-      "rename columns"
+      "rename columns",
+      "pandas.rename",
+      "rename"
     ],
     "embedding": [],
     "seen": 3,
@@ -58,7 +65,10 @@
   {
     "_id": "table.dropna",
     "status": "active",
-    "aliases": [],
+    "aliases": [
+      "pandas.dropna",
+      "dropna"
+    ],
     "embedding": [],
     "seen": 3,
     "first_seen": "2026-09-26T14:30:00Z",
@@ -67,7 +77,10 @@
   {
     "_id": "table.cast",
     "status": "active",
-    "aliases": [],
+    "aliases": [
+      "pandas.astype",
+      "astype"
+    ],
     "embedding": [],
     "seen": 3,
     "first_seen": "2026-09-26T14:30:00Z",
@@ -79,7 +92,9 @@
     "aliases": [
       "insert pivottable",
       "make pivot",
-      "pivot_table"
+      "pivot_table",
+      "pandas.pivot_table",
+      "excel.pivot"
     ],
     "embedding": [],
     "seen": 3,
@@ -125,7 +140,9 @@
   {
     "_id": "table.dedupe",
     "status": "active",
-    "aliases": [],
+    "aliases": [
+      "drop_duplicates"
+    ],
     "embedding": [],
     "seen": 3,
     "first_seen": "2026-09-26T14:30:00Z",
@@ -179,7 +196,10 @@
   {
     "_id": "web.navigate",
     "status": "active",
-    "aliases": [],
+    "aliases": [
+      "nav",
+      "navigate"
+    ],
     "embedding": [],
     "seen": 3,
     "first_seen": "2026-09-26T14:30:00Z",
@@ -206,7 +226,9 @@
   {
     "_id": "web.submit",
     "status": "active",
-    "aliases": [],
+    "aliases": [
+      "submit"
+    ],
     "embedding": [],
     "seen": 3,
     "first_seen": "2026-09-26T14:30:00Z",
@@ -215,7 +237,9 @@
   {
     "_id": "web.click",
     "status": "active",
-    "aliases": [],
+    "aliases": [
+      "click"
+    ],
     "embedding": [],
     "seen": 3,
     "first_seen": "2026-09-26T14:30:00Z",

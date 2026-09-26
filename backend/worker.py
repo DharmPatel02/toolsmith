@@ -6,6 +6,7 @@ consumer is P1.2.4; this module does not claim to consume database jobs yet.
 
 import asyncio
 import importlib
+import logging
 import sys
 from collections.abc import Awaitable, Callable
 
@@ -47,10 +48,33 @@ async def dispatch(job_type: str, payload: dict):
 
 async def main():
     discover_jobs()
-    if not get_settings().stub_mode:
-        raise NotImplementedError("Live change-stream worker is pending P1.2.4")
-    print("Phase 0 worker: registry ready; no database jobs consumed", flush=True)
-    await asyncio.Event().wait()
+    if get_settings().stub_mode:
+        print("Fixture worker: registry ready; API memory is process-local", flush=True)
+        await asyncio.Event().wait()
+    else:
+        from app.db import close_client
+
+        print("Phase 1 worker: closing idle sessions; change streams pending Phase 2", flush=True)
+        try:
+            while True:
+                try:
+                    await close_idle_sessions()
+                except Exception:
+                    logging.exception("Idle-session closure failed")
+                await asyncio.sleep(30)
+        finally:
+            await close_client()
+
+
+async def close_idle_sessions(store=None, embed=None, now=None):
+    from app.ingest.service import close_idle
+    from app.ingest.store import get_store
+
+    store = store if store is not None else get_store()
+    result = []
+    for user_id in await store.users_with_open_sessions():
+        result.extend(await close_idle(user_id, store=store, embed=embed, now=now))
+    return result
 
 
 if __name__ == "__main__":

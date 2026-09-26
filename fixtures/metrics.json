@@ -38,5 +38,12 @@
       "seconds": 1,
       "tokens": 500
     }
-  }
+  },
+  "detection": {
+    "precision": 0,
+    "recall": 0,
+    "f1": 0
+  },
+  "repair_loops": 0,
+  "toolbox_size_over_time": []
 }

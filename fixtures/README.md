@@ -1,21 +1,30 @@
-# Phase 0 fixtures
+# Fixtures
 
-These are development samples, not measured results or evidence of executed tools.
-`STUB_MODE=true` enables them; HTTP responses carry `X-ToolSmith-Mode: fixture`.
-The API returns 501 for unimplemented services when fixture mode is disabled.
+These files are development samples, not measured results or evidence of executed tools. `STUB_MODE=true` enables fixture-backed responses; HTTP responses include `X-ToolSmith-Mode: fixture`. When `STUB_MODE=false`, unfinished services fail closed instead of silently returning samples.
 
-- `pattern_uc1.json` and `policy.json` reproduce task-board §3 defaults.
+## API and UI fixtures
+
+- `pattern_uc1.json`, `policy.json`, `tool_uc1.json`, `candidate_uc1.json`, `run_result.json`, and `why_uc1.json` support early API and UI work.
 - `capture_batch.json` has three DOM events and two valid 256-pixel WebP frames.
-  `frame_1.webp` and `frame_2.webp` are **synthetic labeled UI samples**, not real
-  screenshots. Replace them with P3's mock-site captures when available.
-- `why_uc1.json` contains illustrative dates on three Mondays. Its thumbnail URLs
-  intentionally serve synthetic sample images until real capture is integrated.
-- `tool_uc1.json`, `candidate_uc1.json`, and `run_result.json` support UI development.
-  The sandbox stub always reports that no execution occurred; confirmation does
-  not execute or promote anything.
-- `events.jsonl` contains SSE envelopes, and `race.jsonl` contains illustrative race
-  steps. Neither file is an observation-ingest dataset.
-- `metrics.json` defines the shared metrics shape; its values are placeholders.
+- `frame_1.webp` and `frame_2.webp` are synthetic labeled UI samples. Replace them with P3 mock-site captures or P2 replay frames when available.
+- `chat_reply.json` is a P3-facing chat fixture.
+- `lineage_uc2.json` is a restored UC2 composition fixture with sample dependencies for `GET /tools/{id}/lineage`.
+- `metrics.json` defines the expanded metrics response shape. Values are placeholders.
 
-The three-person scope omits the UC2 lineage fixture. The `lineage.calls` contract
-remains available, but composition is not implemented.
+## Event files
+
+- `events.jsonl` contains SSE envelopes for `GET /events`.
+- `race.jsonl` contains illustrative race steps.
+- `observations.jsonl` contains a small canonical observation-ingest sample for `/observations/bulk`.
+
+Use `observations.jsonl` for ingest tests. `events.jsonl` is intentionally kept as the server-sent event fixture because the updated task board uses the same word for two different payload shapes.
+
+## Generated histories
+
+The full synthetic history is generated on demand:
+
+```sh
+.venv/bin/python -m data.generator --out /tmp/toolsmith-seed
+```
+
+That command writes `history.jsonl`, `history_logs_only.jsonl`, and `ground_truth.json`. The generated data plants UC1, UC2, UC3, two decoys, and noise. The logs-only history removes UC1 screen observations for the ablation.

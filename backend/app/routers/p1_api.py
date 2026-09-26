@@ -18,6 +18,7 @@ from app.contracts import (
 )
 from app.events import subscribe
 from app.fixtures import fixture, require_demo_user
+from app.ingest.service import ingest
 from app.metrics.service import compute_metrics
 from app.policy.service import get_policy
 from app.runtime.service import run_by_intent, run_tool
@@ -67,11 +68,10 @@ async def capture(batch: CaptureBatch):
 
 @router.post("/observations/bulk")
 async def observations(batch: ObservationBatch):
-    require_demo_user(batch.user_id)
-    return {
-        "inserted": len(batch.events),
-        "sessions_touched": len({e.session_id for e in batch.events if e.session_id}),
-    }
+    demo = get_settings().demo_user_id
+    if batch.user_id not in (demo, demo + "_logs_only"):
+        raise HTTPException(403, "Only the demo and ablation users may ingest")
+    return await ingest(batch)
 
 
 @router.get("/suggestions")
