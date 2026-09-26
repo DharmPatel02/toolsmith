@@ -1,6 +1,8 @@
 """PriceWatch mock site for the UC3 scrape/heal demo. Stdlib only (runs in a bare python image).
 
 Same data in two layouts; `POST /demo/mocksite/{v1|v2}` flips the active one. Port 8081 by default.
+`/competitor-b/products` is a second shop (same markup as v1, different prices) for comparisons.
+Mock Slack / Jira / tracker / inbox apps and the OAuth consent flow live in `apps.py`.
     python mocksite/server.py [--port 8081] [--layout v1]
     python mocksite/server.py --snapshot     # rewrite snapshots/ (UC3 replay fixtures)
 """
@@ -28,6 +30,17 @@ def _load_layout(name: str):
 
 
 LAYOUTS = {name: _load_layout(name) for name in LAYOUT_NAMES}
+_apps_spec = importlib.util.spec_from_file_location("mocksite_apps", HERE / "apps.py")
+apps = importlib.util.module_from_spec(_apps_spec)
+_apps_spec.loader.exec_module(apps)
+
+
+def competitor_b_products() -> list[dict]:
+    """Deterministic price differences: some cheaper, some dearer than PriceWatch."""
+    factors = [0.92, 1.05, 0.97, 1.0, 0.85, 1.1, 0.95, 1.03, 0.9, 1.0, 1.08, 0.88]
+    return [dict(p, price=round(p["price"] * f, 2)) for p, f in zip(PRODUCTS, factors, strict=True)]
+
+
 active = {"layout": os.environ.get("MOCKSITE_LAYOUT", "v1")}
 
 
@@ -48,6 +61,10 @@ def render(layout_name: str, path: str, query: dict) -> tuple[int, str]:
         product = BY_SKU.get(path.removeprefix("/products/"))
         if product:
             return 200, layout.page(product["name"], layout.product_detail(product))
+    if path == "/competitor-b/products":
+        return 200, LAYOUTS["v1"].page(
+            "ShopB products", LAYOUTS["v1"].product_list(competitor_b_products(), "ShopB catalog")
+        )
     if path == "/report":
         return 200, layout.page("Daily report", layout.report_form("saved" in query))
     return 404, layout.page("Not found", "<h1>Not found</h1>")
@@ -80,13 +97,36 @@ class Handler(BaseHTTPRequestHandler):
             204,
             b"",
             headers={
-                "Access-Control-Allow-Methods": "GET, POST",
-                "Access-Control-Allow-Headers": "Content-Type",
+                "Access-Control-Allow-Methods": "GET, POST, DELETE, PATCH",
+                "Access-Control-Allow-Headers": "Content-Type, Authorization",
             },
         )
 
+    def _app(self, method: str) -> bool:
+        """Delegates mock-app routes (apps.py). Returns True if handled."""
+        url = urlparse(self.path)
+        length = int(self.headers.get("Content-Length") or 0)
+        body = self.rfile.read(length) if length else b""
+        result = apps.handle(method, url.path, parse_qs(url.query), body, self.headers)
+        if result is None:
+            self._pending_body = body
+            return False
+        status, payload, content_type, headers = result
+        self._send(status, payload, content_type, headers)
+        return True
+
+    def do_DELETE(self):
+        if not self._app("DELETE"):
+            self._send(404, "not found", "text/plain")
+
+    def do_PATCH(self):
+        if not self._app("PATCH"):
+            self._send(404, "not found", "text/plain")
+
     def do_GET(self):
         url = urlparse(self.path)
+        if self._app("GET"):
+            return
         if url.path == "/demo/mocksite":
             return self._json(200, {"active": active["layout"]})
         if url.path.startswith("/static/"):
@@ -100,8 +140,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         url = urlparse(self.path)
-        length = int(self.headers.get("Content-Length") or 0)
-        self.rfile.read(length)  # form bodies are accepted and discarded
+        if self._app("POST"):  # consumes the body
+            return
         if url.path.startswith("/demo/mocksite/"):
             layout = url.path.removeprefix("/demo/mocksite/")
             if layout not in LAYOUT_NAMES:

@@ -1,0 +1,8 @@
+{
+  "invoice": "INV-2206",
+  "po": "PO-4106",
+  "vendor": "BlueRiver Logistics",
+  "total": 1980.0,
+  "status": "matched",
+  "issues": []
+}

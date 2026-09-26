@@ -1,2 +1,4 @@
 -r base.txt
 beautifulsoup4>=4.12,<5
+pypdf>=4,<7          # invoice text pre-extraction (outside the sandbox)
+reportlab>=4,<6      # scripts/make_invoices.py

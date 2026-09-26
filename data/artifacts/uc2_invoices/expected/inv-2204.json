@@ -1,0 +1,8 @@
+{
+  "invoice": "INV-2204",
+  "po": "PO-4104",
+  "vendor": "Northwind Supplies",
+  "total": 462.5,
+  "status": "matched",
+  "issues": []
+}

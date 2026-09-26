@@ -1,0 +1,15 @@
+{
+  "invoice": "INV-2202",
+  "po": "PO-4102",
+  "vendor": "Acme Packaging",
+  "total": 665.25,
+  "status": "mismatch",
+  "issues": [
+    {
+      "sku": "AC-14",
+      "field": "qty",
+      "po": 150,
+      "invoice": 165
+    }
+  ]
+}

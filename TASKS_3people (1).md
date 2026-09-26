@@ -802,6 +802,16 @@ Format: `HH:MM · from PN · to owner PM · what + why · status (open / done)`
 
 ---
 
+**Approval-first automation (UC3 pricing + UC2 invoices), plan agreed 15:50 — contracts:**
+- 16:00 · P3 · to all · `connectors` collection `{user_id, app, scopes[], status: connected|revoked, token_ref, connected_at}`; routes `GET /connectors`, `POST /connectors/{app}/connect` → `{consent_url}`, `GET /connectors/callback`, `DELETE /connectors/{app}` (P3, `p3_connectors.py`); mock OAuth + Slack/Jira/tracker/inbox apps on the mock site (`mocksite/apps.py`) · done
+- 16:00 · P3 · to P2 · harness `ctx.action(kind, **payload)` → `intended_writes` item `{path: kind, kind: "action:<kind>", payload}`; gate side-effect check treats `action:<app>.*` as needing scope `<app>` · open
+- 16:00 · P3 · to P1 · runtime: on confirm, execute `action:*` writes via `app.connectors.executors.execute` and store `runs.actions[{kind, payload, receipt, executed_at}]`; vocab `automation: approval` steps always wait (`runs.status: awaiting_approval`); `GET /approvals`, `POST /approvals/{run_id}` `{decision, note}`; `POST /runs/{id}/revert` → `executors.compensate(receipt)` · open
+- 16:00 · P3 · to P1 · `DELETE /tools/{id}` (soft: `status: deleted`; blocked while running/awaiting approval or with dependents) → pattern back to `mined` with `deleted_tool_id` + `cooldown_until` (`thresholds.resuggest_after_delete`); `/suggestions` items gain `plan` (from `app/suggestions/plan.py`, P3) and `deleted_at`; `POST /capture/sessions/close` for the live demo · open
+- 16:00 · P3 · to P1 · generator: UC3 signature `web.fetch:html → web.extract:list → table.dedupe → table.compare → report.html → slack.post`; UC2 becomes invoices `email.open → pdf.extract:invoice → table.join:po → invoice.validate → tracker.upsert → slack.post → jira.create` (data in `data/artifacts/uc2_invoices/`, P3) · open
+- 16:00 · P3 · to P2 · tutorial required sections add: What's automated · What needs your approval · Permissions used · How to undo / delete · open
+
+---
+
 **3-person ownership changes (no contract shape changes):**
 - pre · 3p · P1 → P2 · `embeddings.py` (task P1.1.4) built by P2; P1 keeps the stub until P2 pushes · open
 - pre · 3p · P4 → P1/P2/P3 · `metrics/` → P1 · `interpreter/`, `baseline/`, `/race` → P2 · `concierge/`, `/chat`, `/ideas`, `/demo/mocksite` → P3 (routers renamed `p3_*.py`) · open
