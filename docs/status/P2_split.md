@@ -83,4 +83,17 @@ Format: `HH:MM · C→X or X→C · what · status`
   Tests: `tests/p2/c/test_sandbox_contract.py`, `tests/p2/x/test_uc1_artifacts.py`. · done
 - 12:40 · C→X · **Still open, needs Docker**: P2.1.2 `sandbox/Dockerfile` (uncommitted in the codex worktree) and a Docker
   path in `runner.py` (`--network none` unless a `net:` scope, read-only FS, tmpfs, 512 MB). The current runner is a
-  plain subprocess = no OS-level isolation; OK for dev, not for the "sandbox" claim on stage. · open
+  plain subprocess = no OS-level isolation; OK for dev, not for the "sandbox" claim on stage. · done in code
+  (docker backend in runner.py, auto when docker + `toolsmith-sandbox:latest` exist), live check still needs Docker on the demo laptop
+- 13:27 · lanes merged: laptop died, Claude Code now owns lane X too; all X tasks done in the main folder.
+
+## Requests to P1 / P3 (copy into TASKS §8)
+- 13:27 · P2→P1 · **worker**: auto-discover `app/forge/jobs.py` (forge), `app/interpreter/jobs.py` (interpret), `app/trust/jobs.py` (heal); each exposes `JOBS` + `register(fn)`. · open
+- 13:27 · P2→P1 · **runtime `runs` docs**: drift + ladder read `outcome` ∈ success|failed|edited (fallback `ok`), `started_at`, `params`, `user_confirmed`. Call `trust.service.update_after_run(run)` then `check_drift(tool_id)` after each run. · open
+- 13:27 · P2→P1 · **runtime params**: file params must be passed to the sandbox as input handles too (`params["file"] = "file"` + inputs `{"file": path}`); forged code may use either `ctx.read_table("file")` or `ctx.read_table(params["file"])`. The gate does this. · open
+- 13:27 · P2→P1 · **demo_reset**: call `await app.trust.uc3_seed.seed_uc3_tool("u_1")` (UC3 tool + v1 fixture + 12 green runs, trust supervised); set `VOCAB_FROZEN=1`; keep `.cache/llm` and `data/recordings/labels/` (precompute output, git-ignored / local). · open
+- 13:27 · P2→P1 · **new collection `races`** `{_id, user_id, intent, inputs, status, baseline:{ok,steps,seconds,tokens,usd,...}, tool:{...}, summary}` for `metrics.race`. · open
+- 13:27 · P2→P1 · **frames session id**: video replay posts `capture_session_id = s_w{N}_mon`; please use it as the frames' `session_id` (hand/precomputed label files are keyed by it). · open
+- 13:27 · P2→P1 · `tool_versions` now also stores `spec` and `fixtures_ref.replay_cases` (heal re-gates against them). · info
+- 13:27 · P2→P3 · **mock-site markup for UC3** (seeded scraper + heal expect this): v1 = `li.product` with `.product-name` and `.price` ("$24.99"); v2 = same products, renamed classes + price moved (reference: `REFERENCE_V1_HTML` / `REFERENCE_V2_HTML` in `backend/app/trust/uc3_seed.py`). Save snapshots to `data/artifacts/uc3/v1.html`, `v2.html`. · open
+- 13:27 · P2→P3 · `POST /race` returns `{race_id}` at once; `GET /race/{id}` has final numbers; `POST /chat` is live (P3.2.3 unblocked). SSE extras: `healed.data.time_to_heal_ms`, `drift_detected.data.because`. · info
