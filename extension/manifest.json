@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "ToolSmith Recorder",
+  "version": "0.1.0",
+  "description": "Captures clicks, form submits, navigation and keyframes on allow-listed sites for ToolSmith.",
+  "action": { "default_title": "ToolSmith Recorder", "default_popup": "popup.html" },
+  "background": { "service_worker": "dist/background.js" },
+  "permissions": ["activeTab", "storage"],
+  "host_permissions": ["http://localhost:8081/*", "http://localhost:8000/*"],
+  "content_scripts": [
+    { "matches": ["http://localhost:8081/*"], "js": ["dist/content.js"], "run_at": "document_idle" }
+  ]
+}
