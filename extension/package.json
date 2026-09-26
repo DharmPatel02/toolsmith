@@ -1,0 +1,19 @@
+{
+  "name": "toolsmith-extension",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "scripts": {
+    "build": "esbuild src/background.ts src/content.ts src/popup.ts --bundle --outdir=dist --target=chrome120",
+    "watch": "npm run build -- --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test test/*.test.ts",
+    "e2e": "npm run build && node test/e2e.mjs"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.3.0",
+    "esbuild": "^0.28.2",
+    "playwright": "^1.63.0",
+    "typescript": "^7.0.2"
+  }
+}
