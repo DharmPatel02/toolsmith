@@ -107,8 +107,8 @@ async def run_in_sandbox(
                 ok=False,
                 output={},
                 intended_writes=[],
-                stdout=proc.stdout,
-                error=parse_error or proc.stderr.strip() or f"exit code {proc.returncode}",
+                stdout=_clean(proc.stdout, root),
+                error=_clean(parse_error or proc.stderr.strip() or f"exit code {proc.returncode}", root),
                 duration_ms=_elapsed_ms(started),
             )
 
@@ -116,10 +116,20 @@ async def run_in_sandbox(
             ok=bool(payload.get("ok")),
             output=payload.get("output") or {},
             intended_writes=[Write(**item) for item in payload.get("intended_writes", [])],
-            stdout=payload.get("stdout", ""),
-            error=payload.get("error"),
+            stdout=_clean(payload.get("stdout", ""), root),
+            error=_clean(payload.get("error"), root),
             duration_ms=_elapsed_ms(started),
         )
+
+
+def _clean(text: str | None, root: Path) -> str | None:
+    """Tracebacks name the random temp dir; strip it so errors are stable (they feed LLM
+    repair / heal prompts, whose cache key must not change between identical runs)."""
+    if not text:
+        return text
+    for variant in {str(root), str(root.resolve()), root.as_posix(), "/job"}:
+        text = text.replace(variant + os.sep, "").replace(variant + "/", "").replace(variant, "<sandbox>")
+    return text
 
 
 SANDBOX_MEMORY = "512m"

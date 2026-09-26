@@ -118,7 +118,8 @@ async def _label(session_id: str, frames: list[dict], verbs: list[str]):
     hand = hand_labels(session_id)
     ids = {f["_id"] for f in frames}
     if hand is not None:
-        return enforce_contract(hand, ids, set(verbs)), "hand", []
+        steps = rematch_by_dhash(hand["steps"], frames) if hand.get("match") == "dhash" else hand["steps"]
+        return enforce_contract(steps, ids, set(verbs)), hand.get("source", "hand"), []
     sem = asyncio.Semaphore(VLM_CONCURRENCY)
 
     async def one(batch):
@@ -134,12 +135,46 @@ async def _label(session_id: str, frames: list[dict], verbs: list[str]):
     return steps, "vlm", [u for _, u in results]
 
 
-def hand_labels(session_id: str) -> list[dict] | None:
-    d = Path(os.getenv("INTERPRETER_LABELS_DIR", REPO_ROOT / "data" / "recordings" / "labels"))
-    p = d / f"{session_id}.json"
+def labels_dir() -> Path:
+    return Path(os.getenv("INTERPRETER_LABELS_DIR", REPO_ROOT / "data" / "recordings" / "labels"))
+
+
+def hand_labels(session_id: str) -> dict | None:
+    """{"steps": [...], "source"?: "hand"|"precompute", "match"?: "dhash"} or None."""
+    p = labels_dir() / f"{session_id}.json"
     if not p.exists():
         return None
-    return json.loads(p.read_text(encoding="utf-8")).get("steps", [])
+    data = json.loads(p.read_text(encoding="utf-8"))
+    return {"steps": data.get("steps", []), "source": data.get("source", "hand"), "match": data.get("match")}
+
+
+def rematch_by_dhash(steps: list[dict], frames: list[dict]) -> list[dict]:
+    """Precomputed labels carry the frame's dHash, because frame ids change on every ingest.
+    Each step moves to the current frame with the nearest dHash (Hamming <= 6); unmatched steps drop."""
+    import imagehash
+
+    out = []
+    for s in steps:
+        if not s.get("dhash"):
+            continue
+        h = imagehash.hex_to_hash(s["dhash"])
+        best = min(frames, key=lambda f: f["_dhash"] - h, default=None)
+        if best is not None and best["_dhash"] - h <= stages.DHASH_MAX_HAMMING:
+            out.append({**s, "frame_id": best["_id"]})
+    return out
+
+
+def export_labels(session_id: str, frame_docs: list[dict]) -> Path:
+    """Write a session's labeled steps as a dHash-matched label file (scripts/precompute.py)."""
+    steps = [{**{k: v for k, v in s.items() if k not in ("signature", "label_source", "needs_review")},
+              "frame_id": f["_id"], "dhash": f["dhash"]}
+             for f in frame_docs if f.get("dhash") for s in f.get("steps") or []]
+    d = labels_dir()
+    d.mkdir(parents=True, exist_ok=True)
+    p = d / f"{session_id}.json"
+    p.write_text(json.dumps({"source": "precompute", "match": "dhash", "steps": steps}, indent=1, default=str),
+                 encoding="utf-8")
+    return p
 
 
 def to_observation(user_id: str, session_id: str, frame: dict, step: dict) -> dict:

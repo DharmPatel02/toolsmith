@@ -54,7 +54,7 @@ async def heal_tool(tool_id: str, detected_at: datetime | str | None = None,
     old = web_cases[0]
     url = await _failing_url(failing_run_ids) or old["params"].get("url")
     new_page, page_source = await capture_page(url, tool_id)
-    new_case = {"label": f"heal_{datetime.now(UTC):%H%M%S}", "inputs": {FETCH_MAP_INPUT: json.dumps({url: new_page})},
+    new_case = {"label": f"heal_v{tool['active_version'] + 1}","inputs": {FETCH_MAP_INPUT: json.dumps({url: new_page})},
                 "params": {**old["params"], "url": url}, "expected": old["expected"]}
     scopes = version["requires"].get("scopes", [])
 
