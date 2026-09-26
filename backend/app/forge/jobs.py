@@ -81,6 +81,11 @@ async def repair_from_verdict(cid: str, verdict: dict) -> bool:
 def gate_feedback(verdict: dict) -> str:
     c = verdict["checks"]
     lines = [f"Reason: {verdict['reason']}"]
+    if c["replay"]["ok"] and not c["unit"]["ok"]:
+        # real past data is the ground truth: a unit test that disagrees with it is the bug
+        lines.append("The replay on REAL past data PASSED, so the code is right. Your unit test's expected "
+                     "values are wrong: fix the TESTS (recompute the expected numbers from the test data, "
+                     "keep the sort order the code produces). Do not change the code's behaviour.")
     for f in c["unit"].get("failed", [])[:3]:
         lines.append(f"- unit test {f['name']}: {f['error']}")
     for case in c["replay"].get("cases", []):

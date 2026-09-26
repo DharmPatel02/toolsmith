@@ -44,6 +44,38 @@ class FakeCtx:
 '''
 
 RUNNER_SRC = '''
+def _explain_assert(e):
+    """pytest-style: for a failed `assert a <op> b`, re-evaluate both sides in the failing
+    frame so the repair prompt sees the actual values, not a bare AssertionError."""
+    import ast as _ast
+    import inspect as _inspect
+    import textwrap as _textwrap
+    tb = e.__traceback__
+    while tb.tb_next:
+        tb = tb.tb_next
+    fr = tb.tb_frame
+    try:
+        lines, start = _inspect.getsourcelines(fr.f_code)
+        tree = _ast.parse(_textwrap.dedent("".join(lines)))
+        rel = tb.tb_lineno - start + 1
+        env = {**fr.f_globals, **fr.f_locals}
+
+        def val(expr):
+            return repr(eval(compile(_ast.Expression(expr), "<assert>", "eval"), env))[:400]
+        for node in _ast.walk(tree):
+            if not (isinstance(node, _ast.Assert) and node.lineno <= rel <= node.end_lineno):
+                continue
+            t = node.test.operand if isinstance(node.test, _ast.UnaryOp) else node.test
+            if isinstance(t, _ast.Compare) and len(t.ops) == 1:
+                return f" | {_ast.unparse(t.left)[:80]} was {val(t.left)}; expected {val(t.comparators[0])}"
+            if isinstance(t, _ast.Call) and isinstance(t.func, _ast.Attribute):  # x.startswith("<html>")
+                return f" | {_ast.unparse(t.func.value)[:80]} was {val(t.func.value)}"
+            return f" | {_ast.unparse(t)[:80]} was {val(t)}"
+    except Exception:
+        pass
+    return ""
+
+
 def run_tests(ctx=None, **_):
     import traceback as _tb
     names = [n for n, f in list(globals().items()) if n.startswith("test_") and callable(f)]
@@ -52,7 +84,8 @@ def run_tests(ctx=None, **_):
         try:
             globals()[n]()
         except Exception as e:
-            failed.append({"name": n, "error": (type(e).__name__ + ": " + str(e))[:300],
+            why = _explain_assert(e) if isinstance(e, AssertionError) else ""
+            failed.append({"name": n, "error": (type(e).__name__ + ": " + str(e))[:300] + why,
                            "trace": _tb.format_exc()[-800:]})
     return {"total": len(names), "passed": len(names) - len(failed), "failed": failed}
 '''
