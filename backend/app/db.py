@@ -66,6 +66,8 @@ async def initialize_database(db) -> None:
         "ui_events",
         "action_vocab",
         "capture_sessions",
+        "capture_state",
+        "suggestion_impressions",
         "keyframes.files",
         "keyframes.chunks",
     ):

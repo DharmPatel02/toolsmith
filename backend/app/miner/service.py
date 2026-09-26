@@ -54,7 +54,21 @@ def score(features, thresholds, *, avg_minutes, occurrences_per_week, age_days, 
     return ("declined" if reason else "mined"), reason, value
 
 
-def mine_patterns(user_id, sessions, observations, policy, *, now=None, max_gap=1):
+def _similar(left: list[str] | tuple[str, ...], right: list[str] | tuple[str, ...]) -> bool:
+    a, b = set(left), set(right)
+    return bool(a and b) and len(a & b) / len(a | b) >= 0.8
+
+
+def mine_patterns(
+    user_id,
+    sessions,
+    observations,
+    policy,
+    *,
+    now=None,
+    max_gap=1,
+    negative_signatures=None,
+):
     now = now or datetime.now(timezone.utc)
     # Do not mix open episodes into recurrence counts.
     sessions = [session for session in sessions if session.status == "closed"]
@@ -71,6 +85,7 @@ def mine_patterns(user_id, sessions, observations, policy, *, now=None, max_gap=
     labels = cluster_intents(vectors)
     output = []
     thresholds = policy["thresholds"]
+    negative_signatures = negative_signatures or []
     for cluster in sorted(set(labels)):
         members = [s for s, label in zip(sessions, labels) if label == cluster]
         events = [sorted(by_session[s.id], key=lambda e: e.ts) for s in members]
@@ -93,6 +108,8 @@ def mine_patterns(user_id, sessions, observations, policy, *, now=None, max_gap=
                 candidates.append(SequencePattern(signature, support))
                 known.add(signature)
         for candidate in candidates:
+            if any(_similar(candidate.signature, signature) for signature in negative_signatures):
+                continue
             selected = [members[i] for i in candidate.session_indexes]
             if not selected:
                 continue
@@ -155,12 +172,34 @@ async def mine_user(user_id, *, store=None, now=None):
     policy = json.loads((ROOT / "fixtures/policy.json").read_text())
     policy["_id"] = f"policy:{user_id}"
     policy = await store.ensure_policy(user_id, policy)
+    negatives = [pattern.signature for pattern in await store.declined_patterns(user_id, now=now)]
     patterns = mine_patterns(
         user_id,
         await store.list_sessions(user_id),
         await store.observations(user_id),
         policy,
         now=now,
+        negative_signatures=negatives,
     )
     await store.save_patterns(user_id, patterns)
     return patterns
+
+
+async def consolidate_user(user_id, *, store=None, now=None):
+    store = store if store is not None else get_store()
+    now = now or datetime.now(timezone.utc)
+    sessions = [s for s in await store.list_sessions(user_id) if s.status == "closed"]
+    if not sessions:
+        return {"facts": 0, "patterns": 0}
+    source_counts = {}
+    for session in sessions:
+        source_counts[session.source] = source_counts.get(session.source, 0) + 1
+    source = max(source_counts, key=source_counts.get)
+    await store.save_profile_fact(
+        user_id,
+        "preferred_source",
+        source,
+        [session.id for session in sessions if session.source == source],
+    )
+    patterns = await mine_user(user_id, store=store, now=now)
+    return {"facts": 1, "patterns": len(patterns)}

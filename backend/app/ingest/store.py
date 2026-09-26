@@ -2,6 +2,7 @@
 
 import json
 from copy import deepcopy
+from datetime import datetime, timezone
 
 from app.config import ROOT, get_settings
 from app.contracts import Observation, Session
@@ -14,6 +15,7 @@ class MemoryStore:
         self.sessions = {}
         self.patterns = {}
         self.policies = {}
+        self.profile = {}
 
     async def observations(self, user_id):
         return deepcopy(self.events.get(user_id, []))
@@ -35,6 +37,20 @@ class MemoryStore:
                 continue
             existing[pattern.id] = deepcopy(pattern)
         self.patterns[user_id] = list(existing.values())
+
+    async def declined_patterns(self, user_id, now=None):
+        now = now or datetime.now(timezone.utc)
+        return [
+            deepcopy(pattern)
+            for pattern in self.patterns.get(user_id, [])
+            if pattern.status == "declined"
+            and (pattern.cooldown_until is None or pattern.cooldown_until > now)
+        ]
+
+    async def save_profile_fact(self, user_id, key, value, evidence_ids):
+        fact = {"key": key, "value": value, "evidence_session_ids": list(evidence_ids)}
+        self.profile.setdefault(user_id, {})[key] = deepcopy(fact)
+        return fact
 
     async def vocabulary(self):
         return json.loads((ROOT / "data/action_vocab_seed.json").read_text())
@@ -89,6 +105,33 @@ class MongoStore:
                 pattern.model_dump(by_alias=True),
                 upsert=True,
             )
+
+    async def declined_patterns(self, user_id, now=None):
+        now = now or datetime.now(timezone.utc)
+        rows = await self.db.patterns.find(
+            {
+                "user_id": user_id,
+                "status": "declined",
+                "$or": [{"cooldown_until": None}, {"cooldown_until": {"$gt": now}}],
+            }
+        ).to_list(length=None)
+        from app.contracts import Pattern
+
+        return [Pattern.model_validate(row) for row in rows]
+
+    async def save_profile_fact(self, user_id, key, value, evidence_ids):
+        fact = {
+            "key": key,
+            "value": value,
+            "evidence_session_ids": list(evidence_ids),
+            "updated_at": datetime.now(timezone.utc),
+        }
+        await self.db.profile.update_one(
+            {"_id": f"profile:{user_id}", "user_id": user_id},
+            {"$set": {f"facts.{key}": fact, "updated_at": fact["updated_at"]}},
+            upsert=True,
+        )
+        return fact
 
     async def ensure_policy(self, user_id, policy):
         await self.db.policy.update_one(

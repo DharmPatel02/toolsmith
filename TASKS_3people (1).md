@@ -473,27 +473,30 @@ After P1 pushes: everyone `git pull`, then create your branch: `p1-core`, `p2-fo
 #### Phase 2 (12:45–14:00)
 - [x] **P1.2.1** `search.py`: `search_tools` via `$rankFusion` (vector + text), filtered by `user_id` + `status: active`; client-side RRF fallback if `$rankFusion` fails; `recall_episodes` via `$vectorSearch` on `sessions`; exact structural query on `signature_seq`. **P0**
   *Test:* insert 3 fake tools → a paraphrased query ranks the right one first.
-- [ ] ✏️ **P1.2.4** `worker.py`: change streams on `sessions` (closed → queue mine), `jobs` (dispatch to registered handler), `runs` (call `trust.check_drift` hook), **`frames` (new frames → queue one `interpret` job per session, debounced ~5 s)**. **P0**
+- [x] ✏️ **P1.2.4** `worker.py`: change streams on `sessions` (closed → queue mine), `jobs` (dispatch to registered handler), `runs` (call `trust.check_drift` hook), **`frames` (new frames → queue one `interpret` job per session, debounced ~5 s)**. **P0**
   *Test:* inserting a forge job calls the registered handler (P2 stub logs it); inserting 3 frames queues exactly 1 interpret job.
-- [ ] **P1.2.5** `events.py` + `GET /events` SSE (tail `events` collection change stream, filter by user). **P0**
+- [x] **P1.2.5** `events.py` + `GET /events` SSE (tail `events` collection change stream, filter by user). **P0**
   *Test:* `curl -N /events` shows an event after `publish()`.
 - [ ] 🆕 **P1.2.8** `/capture/batch` real: reject origins not in `CAPTURE_ALLOWED_ORIGINS`; write `ui_events`; frames → keyframe to GridFS + thumbnail inline + `frames` doc; update `capture_sessions` counts; then `fuse()` per §3.5b (±1.5 s, structured wins, frame as evidence). Also `GET /capture/state`, `POST /capture/{pause|resume}` (publishes `capture_paused`), `POST /capture/delete_last` (P1 priority for the last three). **P0**
   *Test:* a T1 click and a T2 frame 0.8 s apart → **one** observation with `evidence.frame_ids`; a frame from a non-allow-listed origin is refused.
-- [ ] **P1.2.2** Recheck gate (plan §6.1.3) + `GET /suggestions`, `GET /suggestions/declined`, `GET /suggestions/{id}/why` (episodes; frames added in P1.2.9). **P0**
+  *P1 progress:* Partial — live capture persistence, inline thumbnails, GridFS originals, allow-list checks, audit counts, persistent pause/resume, and delete-last are implemented. Same-batch structured/frame fusion is covered offline; late interpreter-label fusion and live Atlas acceptance remain open.
+- [x] **P1.2.2** Recheck gate (plan §6.1.3) + `GET /suggestions`, `GET /suggestions/declined`, `GET /suggestions/{id}/why` (episodes; frames added in P1.2.9). **P0**
   *Test:* pattern already covered by a tool → not suggested; budget of 3/day respected.
-- [ ] 🆕 **P1.2.9** `/suggestions/{id}/why` returns `frames` (from the pattern's evidence sessions, one per day, with verb); `GET /frames/{id}/thumb`. **P0**
+  *P1 note:* Live suggestions filter to mined/not-cooled-down patterns, recheck active-tool cosine and signature coverage, apply policy blocks/daily budget, and return declined patterns; tests cover the budget gate.
+- [x] 🆕 **P1.2.9** `/suggestions/{id}/why` returns `frames` (from the pattern's evidence sessions, one per day, with verb); `GET /frames/{id}/thumb`. **P0**
   *Test:* UC1 "why" returns ≥ 3 frames from 3 different days.
-- [ ] **P1.2.3** `POST /suggestions/{id}/accept|decline|snooze`: accept → insert `jobs{type:"forge"}`; decline → `feedback` + exponential cooldown; `never_for_scope` → `policy.rules` entry via `record_change` (tighten, auto). **P0**
+  *P1 note:* Live evidence lookup and user-scoped thumbnails are implemented; fixture route checks and a mocked live query test pass.
+- [x] **P1.2.3** `POST /suggestions/{id}/accept|decline|snooze`: accept → insert `jobs{type:"forge"}`; decline → `feedback` + exponential cooldown; `never_for_scope` → `policy.rules` entry via `record_change` (tighten, auto). **P0**
   *Test:* decline with never_for_scope → rule appears in `GET /policy`, change logged.
-- [ ] **P1.2.6** Runtime: `POST /tools/{id}/run` and `POST /run` (found ≥ `T_high` → create `working_memory {static, dynamic, expires_at}` → `run_in_sandbox` at the tool's trust level → write `runs` → `update_after_run` → publish `run_completed`; related → return route + closest tool; not_found → log a session). **P0**
+- [x] **P1.2.6** Runtime: `POST /tools/{id}/run` and `POST /run` (found ≥ `T_high` → create `working_memory {static, dynamic, expires_at}` → `run_in_sandbox` at the tool's trust level → write `runs` → `update_after_run` → publish `run_completed`; related → return route + closest tool; not_found → log a session). **P0**
   *Test:* with P2 stubs, a found request creates `working_memory` and `runs` docs.
-- [ ] **P1.2.7** `GET /tools`, `GET /tools/{id}`, versions, rollback. **P0**
+- [x] **P1.2.7** `GET /tools`, `GET /tools/{id}`, versions, rollback. **P0**
   *Test:* returns shapes from §3.4.
 
 #### ⇄ Integration I-2, all three (14:00–14:30) — see §6.3
 
 #### Phase 3 (14:30–15:15)
-- [ ] **P1.3.1** Policy learner (plan §8.3 rules) running every N minutes in the worker (compressed for demo); tighten = applied, loosen = pending; `POST /policy/changes/{id}/approve`; publish `policy_changed`. **P0**
+- [x] **P1.3.1** Policy learner (plan §8.3 rules) running every N minutes in the worker (compressed for demo); tighten = applied, loosen = pending; `POST /policy/changes/{id}/approve`; publish `policy_changed`. **P0**
   *Test:* force prune rate > 0.5 → `min_support 3 → 4` appears with a `because` text.
 - [ ] **P4.2.1** Label ~50 (intent, correct tool or none) pairs from the generator's ground truth; `scripts/calibrate.py` sweeps `T_high`/`T_low`/`merge_similarity` using `search_tools`, picks the best F1 for "found", writes them into `policy` via `record_change` (origin `calibration`). **P0**
   *Test:* prints the F1 table; policy updated.
@@ -501,13 +504,13 @@ After P1 pushes: everyone `git pull`, then create your branch: `p1-core`, `p2-fo
   *Test:* matches `fixtures/metrics.json` shape; numbers are computed, not hard-coded.
 - [ ] 🆕 **P4.3.6** `scripts/capture_eval.py`: on the ground-truth recording → step recall (≥ 0.85), signature precision (≥ 0.80), segment boundaries within ±1 step, pattern recall (3/3), noise suggestions (0); plus **logs-only vs logs + screen ablation** (miner run twice: workflows found, false suggestions) → exposed in `/metrics`. **P0**
   *Test:* numbers computed, not hard-coded.
-- [ ] **P1.3.2** Feedback → miner: rejected patterns become negative examples (skip similar ones during cooldown); edited-before-approval stores a parameter hint. **P1**
+- [x] **P1.3.2** Feedback → miner: rejected patterns become negative examples (skip similar ones during cooldown); edited-before-approval stores a parameter hint. **P1**
   *Test:* a declined pattern is not re-suggested during cooldown.
-- [ ] 🆕 **P1.3.5** `runtime/lineage.py`: `$graphLookup` dependency tree (`maxDepth 4`, `restrictSearchWithMatch {user_id, status: active}`) used by the runtime to pass `deps` to the sandbox; **fail closed** if resolved deps < names in `lineage.calls` (queue a forge job to re-point at `merged_into`); reverse lookup `dependents()` blocks pruning of depended-on tools (P2's prune calls it); `GET /tools/{id}/lineage`. **P1**
+- [x] 🆕 **P1.3.5** `runtime/lineage.py`: `$graphLookup` dependency tree (`maxDepth 4`, `restrictSearchWithMatch {user_id, status: active}`) used by the runtime to pass `deps` to the sandbox; **fail closed** if resolved deps < names in `lineage.calls` (queue a forge job to re-point at `merged_into`); reverse lookup `dependents()` blocks pruning of depended-on tools (P2's prune calls it); `GET /tools/{id}/lineage`. **P1**
   *Test:* composed tool resolves 2 deps; pruning a dependency is refused with a reason logged on the policy strip.
-- [ ] 🆕 **P1.3.6** App-shift segmentation: split a session when focus moves > 3 min to an app not seen in the segment **and** intent cosine < 0.5. **P1**
+- [x] 🆕 **P1.3.6** App-shift segmentation: split a session when focus moves > 3 min to an app not seen in the segment **and** intent cosine < 0.5. **P1**
   *Test:* a Spotify detour splits the session; a quick glance does not.
-- [ ] **P1.3.3** `POST /consolidate` job: summarize closed sessions, promote repeated facts into `profile`, decay idle patterns, re-mine the full window. **P1** *(restored to original priority)*
+- [x] **P1.3.3** `POST /consolidate` job: summarize closed sessions, promote repeated facts into `profile`, decay idle patterns, re-mine the full window. **P1** *(restored to original priority)*
   *Test:* after running, `profile` has at least 1 fact (e.g. column naming style).
 - [ ] ⭐ **P1.3.4** Related → adapt path: send closest tool + new intent to `forge_from_spec`.
 - [ ] ⭐ **P4.3.5** Memory-mode comparison (plan §15): same 10 tasks, no memory vs ToolSmith tools → success, steps, tokens.

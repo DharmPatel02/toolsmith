@@ -94,6 +94,123 @@ def test_capture_rejects_other_origins(client, origin):
     assert client.post("/capture/batch", json=batch).status_code == 403
 
 
+def test_capture_frame_origin_is_allow_listed(client):
+    batch = fixture("capture_batch.json")
+    batch["frames"][0]["url_template"] = "https://evil.example/page"
+    assert client.post("/capture/batch", json=batch).status_code == 403
+
+
+def test_structured_capture_fusion_keeps_frame_evidence():
+    from app.capture.service import _observation
+
+    batch = CaptureBatch.model_validate(fixture("capture_batch.json"))
+    event = batch.events[0]
+    observation = _observation(batch.user_id, batch.capture_session_id, event, ["frame_1"])
+    assert observation.evidence.tier == "T1"
+    assert observation.evidence.frame_ids == ["frame_1"]
+
+
+async def test_live_why_uses_user_scoped_sessions_and_one_frame_per_day(monkeypatch):
+    from datetime import datetime, timezone
+    from unittest.mock import AsyncMock, MagicMock
+
+    import app.routers.p1_api as api
+
+    monkeypatch.setenv("STUB_MODE", "false")
+    get_settings.cache_clear()
+    db = MagicMock()
+    db.patterns.find_one = AsyncMock(
+        return_value={"_id": "pat_x", "user_id": "u_1", "evidence_session_ids": ["s1"]}
+    )
+    sessions_cursor = MagicMock()
+    sessions_cursor.to_list = AsyncMock(
+        return_value=[
+            {
+                "_id": "s1",
+                "started_at": datetime(2026, 9, 1, tzinfo=timezone.utc),
+                "intent_summary": "Export a report",
+                "minutes": 4,
+                "tokens": 10,
+            }
+        ]
+    )
+    db.sessions.find.return_value = sessions_cursor
+    frame_cursor = MagicMock()
+    frame_cursor.sort.return_value.to_list = AsyncMock(
+        return_value=[
+            {
+                "_id": "f1",
+                "ts": datetime(2026, 9, 1, tzinfo=timezone.utc),
+                "trigger": "click",
+                "label": {"verb": "web.click"},
+            },
+            {
+                "_id": "f2",
+                "ts": datetime(2026, 9, 1, 0, 0, 1, tzinfo=timezone.utc),
+                "trigger": "heartbeat",
+            },
+        ]
+    )
+    db.frames.find.return_value = frame_cursor
+    monkeypatch.setattr(api, "get_db", lambda: db)
+    try:
+        response = await api.why("pat_x")
+        assert len(response.episodes) == 1
+        assert [frame.frame_id for frame in response.frames] == ["f1"]
+        assert response.frames[0].verb == "web.click"
+        db.frames.find.assert_called_once_with({"user_id": "u_1", "session_id": {"$in": ["s1"]}})
+    finally:
+        get_settings.cache_clear()
+
+
+async def test_live_suggestions_obey_policy_daily_cap(monkeypatch):
+    from unittest.mock import AsyncMock, MagicMock
+
+    import app.routers.p1_api as api
+
+    monkeypatch.setenv("STUB_MODE", "false")
+    get_settings.cache_clear()
+    db = MagicMock()
+    db.policy.find_one = AsyncMock(
+        return_value={"thresholds": {"max_suggestions_per_day": 1, "T_high": 0.82}, "rules": []}
+    )
+    db.suggestion_impressions.count_documents = AsyncMock(return_value=0)
+    patterns = MagicMock()
+    patterns.sort.return_value.to_list = AsyncMock(
+        return_value=[
+            {
+                "_id": "p1",
+                "title": "One",
+                "signature": ["web.click"],
+                "support": 3,
+                "distinct_days": 3,
+                "value": 8,
+            },
+            {
+                "_id": "p2",
+                "title": "Two",
+                "signature": ["web.submit"],
+                "support": 3,
+                "distinct_days": 3,
+                "value": 7,
+            },
+        ]
+    )
+    db.patterns.find.return_value = patterns
+    tools_cursor = MagicMock()
+    tools_cursor.to_list = AsyncMock(return_value=[])
+    db.tools.find.return_value = tools_cursor
+    db.suggestion_impressions.update_one = AsyncMock()
+    monkeypatch.setattr(api, "get_db", lambda: db)
+    monkeypatch.setattr(api, "embed", AsyncMock(return_value=[[1.0, 0.0]]))
+    try:
+        response = await api.suggestions()
+        assert [item["pattern_id"] for item in response] == ["p1"]
+        db.suggestion_impressions.update_one.assert_awaited_once()
+    finally:
+        get_settings.cache_clear()
+
+
 @pytest.mark.parametrize("mutation", ["user", "raw_value", "bad_image", "duplicate_frame", "time"])
 def test_capture_rejects_invalid_payload(client, mutation):
     batch = fixture("capture_batch.json")
@@ -128,7 +245,12 @@ def test_why_and_thumbnail(client):
 
 
 def test_live_mode_never_returns_fixtures(client, monkeypatch):
+    import app.routers.p1_api as p1_api
+
     monkeypatch.setenv("STUB_MODE", "false")
+    monkeypatch.setattr(
+        p1_api, "get_db", lambda: (_ for _ in ()).throw(NotImplementedError("live store required"))
+    )
     get_settings.cache_clear()
     assert client.get("/tools").status_code == 501
 
@@ -188,6 +310,68 @@ async def test_sse_publish_and_cleanup():
     assert "event: frame_labeled" in chunk
     assert json.loads(chunk.split("data: ")[1])["data"] == {"frame_id": "f_1"}
     await stream.aclose()
+
+
+async def test_atlas_event_publish_and_sse_are_user_scoped(monkeypatch):
+    from datetime import datetime, timezone
+    from types import SimpleNamespace
+
+    import app.events as event_service
+
+    class ChangeStream:
+        def __init__(self):
+            self.sent = False
+            self.wait_forever = asyncio.Event()
+            self.resume_token = {"_data": "resume"}
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_args):
+            return None
+
+        def __aiter__(self):
+            return self
+
+        async def __anext__(self):
+            if not self.sent:
+                self.sent = True
+                return {
+                    "fullDocument": {
+                        "type": "policy_changed",
+                        "ts": datetime.now(timezone.utc),
+                        "user_id": "tenant-1",
+                        "data": {"field": "min_support"},
+                    }
+                }
+            await self.wait_forever.wait()
+            raise StopAsyncIteration
+
+    inserted = []
+    watches = []
+    changes = ChangeStream()
+
+    async def insert_one(document):
+        inserted.append(document)
+
+    async def watch(pipeline, **options):
+        watches.append((pipeline, options))
+        return changes
+
+    db = SimpleNamespace(events=SimpleNamespace(insert_one=insert_one, watch=watch))
+    monkeypatch.setattr(event_service, "get_settings", lambda: SimpleNamespace(stub_mode=False))
+    monkeypatch.setattr(event_service, "get_db", lambda: db)
+
+    await event_service.publish("tenant-1", "policy_changed", {"field": "min_support"})
+    stream = event_service.subscribe("tenant-1")
+    assert "connected" in await anext(stream)
+    chunk = await asyncio.wait_for(anext(stream), timeout=1)
+    await stream.aclose()
+
+    assert inserted[0]["user_id"] == "tenant-1"
+    assert "event: policy_changed" in chunk
+    assert json.loads(chunk.split("data: ")[1])["data"] == {"field": "min_support"}
+    assert watches[0][0][0]["$match"]["fullDocument.user_id"] == "tenant-1"
 
 
 async def test_database_initialization_is_repeatable():
