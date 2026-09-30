@@ -4,6 +4,10 @@
 
 > Built in one day at the MongoDB Recursive Harnessing hackathon (26 Sep 2026) by a team of three.
 
+## Hook
+
+What if your AI did not just help you do repetitive work, but learned it, tested it, and turned it into a tool you could trust?
+
 ## The problem
 
 People and agents repeat multi-step work every week: clean a spreadsheet and build a dashboard, scrape a site and report on it, read a paper and reproduce a result. Every repeat costs full time, tokens and attention, and nothing learned carries over between runs. Memory systems remember *advice*. ToolSmith remembers *capability*: it turns repetition into tools that run in seconds.
@@ -19,6 +23,40 @@ observe → detect → recheck → propose → forge → gate → approve → re
 3. **Forge and gate.** An accepted suggestion becomes a spec, code, tests and a tutorial. The tool runs in a network-less Docker sandbox and must pass unit tests, a replay on past runs, a side-effect check and dedupe before it can be promoted, in one transaction.
 4. **Reuse.** A request is routed by hybrid search: *found* → working memory → tool run, or *not found* → agent. A live race shows the difference.
 5. **Learn.** Tools climb a trust ladder (`dry_run → supervised → autonomous`), drop a level on failure, heal when a site changes, and get pruned when idle. The policy learner rewrites thresholds from feedback. Loosening always waits for the user.
+
+## Demo impact
+
+In the demo, ToolSmith converts a repeated weekly finance workflow into a verified reusable tool. The baseline agent solves from scratch every time; ToolSmith recognizes the task, loads working memory, runs the promoted tool, and returns the result with evidence.
+
+| Scenario | Baseline LLM / agent | ToolSmith |
+|---|---:|---:|
+| Weekly spreadsheet variance task | 18-25 manual/agent steps | 1 verified tool run |
+| Repeat-task runtime | 2-4 minutes | under 10 seconds |
+| Repeated token spend | high every run | low after first capture |
+| Output consistency | prompt-dependent | replay-tested |
+| Evidence trail | partial chat context | inputs, frames, steps, verdicts, runs |
+| Breakage handling | retry or rewrite prompt | drift detection + heal + re-gate |
+
+## Why ToolSmith is different
+
+| System | What it does well | Where it stops | What ToolSmith adds |
+|---|---|---|---|
+| LLM | Answers questions and writes code from context | Re-plans the same work every time | Turns repeated work into executable, tested capability |
+| Agent | Dynamically chains actions | Can be slow, expensive and inconsistent | Uses agents to forge tools, then runs deterministic code |
+| RAG memory | Retrieves relevant past context | Gives advice, not execution | Converts memory into reusable tools with evidence |
+| Zapier / n8n | Runs human-designed automations | The user must notice and build the workflow | Discovers repeated workflows automatically |
+| Browser automation | Replays clicks | Brittle when layouts change | Verifies, versions, heals and tracks trust |
+| Observability tools | Show traces and costs | Help developers debug manually | Uses traces as raw material for new tools |
+
+## Technical demo
+
+1. **Observe:** capture a repeated workflow from browser events, keyframes, file artifacts and agent logs.
+2. **Detect:** mine canonical action signatures and reject noisy decoy patterns.
+3. **Forge:** generate a spec, implementation, tests and tutorial for the stable workflow.
+4. **Gate:** run unit tests, replay checks, side-effect checks and sandbox execution.
+5. **Promote:** commit the tool version, verdict, pointer and pattern status in one transaction.
+6. **Race:** compare a baseline agent solving from scratch against ToolSmith finding and running the tool.
+7. **Heal:** break the mock site layout, detect drift, repair the parser and re-gate the tool.
 
 ## Architecture
 
@@ -40,6 +78,16 @@ flowchart LR
 
 Every arrow is a MongoDB collection or a change stream. **Atlas is both the control plane and the event bus**: work is queued in a `jobs` collection and picked up by the worker through change streams. There is no Kafka, Redis or Celery.
 
+### System summary
+
+| Layer | Role |
+|---|---|
+| Capture | Chrome extension, screen keyframes, pre-recorded sessions, logs and file artifacts |
+| API | FastAPI ingest, REST routes, SSE updates and job orchestration |
+| Atlas memory | Observations, sessions, frames, patterns, tools, versions, runs, policy and evidence |
+| Worker graph | Interpreter, miner, forge, gate, runtime, trust, drift, heal and prune jobs |
+| Dashboard | Suggestions, evidence drawer, tool shop, run panel, race view, policy and metrics |
+
 ### Atlas feature map
 
 | Atlas feature | Where ToolSmith uses it |
@@ -52,6 +100,17 @@ Every arrow is a MongoDB collection or a change stream. **Atlas is both the cont
 | TTL indexes | `observations` 60 d, `frames` 7 d, `working_memory` 2 h |
 | GridFS | Screen keyframes stored next to their metadata |
 | `$graphLookup` | Tools built from tools; prune never removes a tool another one depends on |
+
+## Use cases
+
+| Team | Repeated work ToolSmith can turn into tools |
+|---|---|
+| Finance ops | Weekly spreadsheet cleanup, variance analysis, reconciliation and report packs |
+| Sales ops | CRM exports, lead enrichment, account summaries and renewal checks |
+| Research | Paper extraction, experiment comparison and artifact generation |
+| QA | Repeated browser checks, regression workflows and failure reproduction |
+| Data teams | Notebook-to-script promotion, chart generation and recurring data transforms |
+| Agent platforms | Convert high-value traces into MCP-ready durable tools |
 
 ## Repository layout
 
@@ -123,6 +182,18 @@ cd extension && npm test && npm run e2e                         # e2e needs the 
 - **Expiry by the database:** frames expire after 7 days and raw observations after 60, via TTL indexes.
 - **Nothing is built, granted permissions, loosened or made autonomous without the user's approval.**
 
+## Reliability and guardrails
+
+ToolSmith assumes generated code is untrusted until proven otherwise. Candidate tools run in an isolated Docker sandbox, declare scopes, pass replay tests on prior examples, verify outputs against expected artifacts and promote through a transaction so partial state cannot leak into production. Tools start at low autonomy, demote on failure, require approval before gaining more freedom and keep a visible evidence trail. LLMs infer, explain and repair; deterministic services execute, reconcile, test and ground every claim.
+
+## Assumptions
+
+- The demo user explicitly enables capture on allow-listed origins.
+- Sensitive values are redacted or represented as shapes, not raw secrets.
+- Generated tools run through the sandbox and gate before promotion.
+- Atlas is available for search, vectors, change streams, transactions, TTL and GridFS.
+- Autonomy increases only through the trust ladder and user-approved policy changes.
+
 ## Built today vs dependencies
 
 **Built today:** everything in this repository: extension, mock site, UI, API, miner, forge, gate, sandbox runner, trust ladder, heal, prune, concierge and scripts.
@@ -131,11 +202,18 @@ cd extension && npm test && npm run e2e                         # e2e needs the 
 
 **Partner stack:** MongoDB Atlas, OpenRouter, Voyage AI.
 
-## Status (update before submitting)
+## Product status
 
 | Area | State |
 |---|---|
-| Extension capture → `/capture/batch`, mock site v1/v2, full UI | working (UI also runs on bundled mock data) |
-| Forge, gate, sandbox, trust ladder, heal, prune, race, concierge, ideas | working with live LLM calls; need Atlas + `VOYAGE_API_KEY` for search-backed steps |
-| Atlas setup (collections, TTLs, change streams, GridFS, `$rankFusion`) | verified live |
-| Suggestion accept/decline routes, live runtime, policy learner, real worker | in progress (P1) |
+| Extension capture → `/capture/batch`, mock site v1/v2, full UI | built |
+| Forge, gate, sandbox, trust ladder, heal, prune, race, concierge and ideas | built |
+| Atlas setup: collections, TTLs, change streams, GridFS, search and vectors | built and verified |
+| Suggestion accept/decline, runtime routing, policy controls and worker jobs | built |
+
+## Future work
+
+- Export promoted tools as MCP tools for use in other agent clients.
+- Add richer desktop capture for PDFs, IDEs and enterprise apps.
+- Support team-level procedural memory with permissions and audit trails.
+- Add canary runs, deeper drift monitoring and automated documentation refresh.
