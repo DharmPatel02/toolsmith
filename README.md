@@ -4,8 +4,6 @@
 
 > Built in one day at the MongoDB Recursive Harnessing hackathon (26 Sep 2026) by a team of three.
 
-## Hook
-
 What if your AI did not just help you do repetitive work, but learned it, tested it, and turned it into a tool you could trust?
 
 ## The problem
