@@ -60,6 +60,8 @@ In the demo, ToolSmith converts a repeated weekly finance workflow into a verifi
 
 ## Architecture
 
+![ToolSmith system design](docs/toolsmith_system_design.jpg)
+
 ```mermaid
 flowchart LR
   EXT[Chrome extension] --> CAP[/capture/batch/]
